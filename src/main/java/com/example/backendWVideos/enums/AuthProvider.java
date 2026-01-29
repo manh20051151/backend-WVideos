@@ -1,4 +1,4 @@
-﻿package com.example.backendWVideos.enums;
+package com.example.backendWVideos.enums;
 
 public enum AuthProvider {
     LOCAL,

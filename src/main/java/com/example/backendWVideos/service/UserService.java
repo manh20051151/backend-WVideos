@@ -1,4 +1,4 @@
-﻿package com.example.backendWVideos.service;
+package com.example.backendWVideos.service;
 
 
 import com.example.backendWVideos.entity.Role;
@@ -13,18 +13,7 @@ import com.example.backendWVideos.dto.request.UserCreateRequest;
 import com.example.backendWVideos.dto.request.UserUpdateByUserRequest;
 import com.example.backendWVideos.dto.request.UserUpdateRequest;
 import com.example.backendWVideos.dto.request.ApiResponse;
-import com.example.backendWVideos.dto.response.PurchasedDocumentResponse;
-import com.example.backendWVideos.dto.response.DocumentResponseDTO;
-import com.example.backendWVideos.dto.response.SellerTransactionResponse;
-import com.example.backendWVideos.repository.DocumentPurchaseRepository;
-import com.example.backendWVideos.entity.Document;
-import com.example.backendWVideos.entity.DocumentPurchase;
-import com.example.backendWVideos.enums.DocumentStatus;
-import com.example.backendWVideos.mapper.DocumentMapper;
-import com.example.backendWVideos.mapper.DocumentPurchaseMapper;
-import com.example.backendWVideos.repository.DocumentRepository;
 import com.example.backendWVideos.dto.response.UserResponse;
-//import com.example.backendWVideos.identity.enums.Role;
 import com.example.backendWVideos.mapper.UserMapper;
 import com.example.backendWVideos.repository.RoleRepository;
 import com.example.backendWVideos.repository.UserRepository;
@@ -52,7 +41,6 @@ import io.github.resilience4j.retry.annotation.Retry;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.*;
-import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -67,11 +55,6 @@ public class UserService {
     final PasswordEncoder passwordEncoder;
     final JavaMailSender mailSender;
     final PendingRegistrationRepository pendingRegistrationRepository;
-    final DocumentPurchaseService documentPurchaseService;
-    final DocumentPurchaseMapper documentPurchaseMapper;
-    final DocumentRepository documentRepository;
-    final DocumentMapper documentMapper;
-    final DocumentPurchaseRepository documentPurchaseRepository;
 
     @Value("${app.registration.token.expiration-minutes:30}")
     int expirationMinutes;
@@ -244,95 +227,6 @@ public class UserService {
                 .code(1000)
                 .message("Đổi mật khẩu thành công")
                 .build();
-    }
-
-    /**
-     * Lấy danh sách tài liệu đã mua của người dùng hiện tại
-     */
-    @Transactional(readOnly = true)
-    public Page<PurchasedDocumentResponse> getMyPurchasedDocuments(Pageable pageable) {
-        var context = SecurityContextHolder.getContext();
-        String email = context.getAuthentication().getName();
-
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
-
-        log.info("Lấy danh sách tài liệu đã mua - User: {}, Page: {}", user.getId(), pageable.getPageNumber());
-
-        // Lấy danh sách tài liệu đã mua
-        Page<DocumentPurchase> purchases = documentPurchaseService.getPurchasedDocuments(user.getId(), pageable);
-        
-        // Chuyển đổi sang DTO response
-        return purchases.map(documentPurchaseMapper::toPurchasedDocumentResponse);
-    }
-
-    /**
-     * Lấy danh sách tài liệu đã đăng của người dùng hiện tại
-     */
-    @Transactional(readOnly = true)
-    public Page<DocumentResponseDTO> getMyDocuments(DocumentStatus status, Pageable pageable) {
-        var context = SecurityContextHolder.getContext();
-        String email = context.getAuthentication().getName();
-
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
-
-        log.info("Lấy danh sách tài liệu đã đăng - User: {}, Status: {}, Page: {}", 
-                user.getId(), status != null ? status.name() : "ALL", pageable.getPageNumber());
-
-        Page<Document> documents;
-        if (status != null) {
-            // Lấy tài liệu theo status cụ thể
-            documents = documentRepository.findByUserIdAndStatus(user.getId(), status, pageable);
-        } else {
-            // Lấy tất cả tài liệu của user
-            documents = documentRepository.findByUserId(user.getId(), pageable);
-        }
-        
-        // Chuyển đổi sang DTO response
-        return documents.map(documentMapper::toResponseDTO);
-    }
-
-    /**
-     * Lấy danh sách giao dịch bán hàng của người dùng hiện tại
-     */
-    @Transactional(readOnly = true)
-    public Page<SellerTransactionResponse> getMySalesTransactions(Pageable pageable) {
-        var context = SecurityContextHolder.getContext();
-        String email = context.getAuthentication().getName();
-
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
-
-        log.info("Lấy danh sách giao dịch bán hàng - User: {}, Page: {}", 
-                user.getId(), pageable.getPageNumber());
-
-        // Lấy danh sách giao dịch bán của user
-        Page<DocumentPurchase> sales = documentPurchaseRepository.findPurchasesBySeller(user.getId(), pageable);
-        
-        // Chuyển đổi sang DTO response
-        return sales.map(documentPurchaseMapper::toSellerTransactionResponse);
-    }
-
-    /**
-     * Lấy danh sách giao dịch mua hàng của người dùng hiện tại
-     */
-    @Transactional(readOnly = true)
-    public Page<PurchasedDocumentResponse> getMyPurchaseTransactions(Pageable pageable) {
-        var context = SecurityContextHolder.getContext();
-        String email = context.getAuthentication().getName();
-
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
-
-        log.info("Lấy danh sách giao dịch mua hàng - User: {}, Page: {}", 
-                user.getId(), pageable.getPageNumber());
-
-        // Lấy danh sách tài liệu đã mua
-        Page<DocumentPurchase> purchases = documentPurchaseService.getPurchasedDocuments(user.getId(), pageable);
-        
-        // Chuyển đổi sang DTO response
-        return purchases.map(documentPurchaseMapper::toPurchasedDocumentResponse);
     }
 
     public UserResponse getMyInfo(){

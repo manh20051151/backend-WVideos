@@ -1,4 +1,4 @@
-﻿package com.example.backendWVideos.repository;
+package com.example.backendWVideos.repository;
 
 import com.example.backendWVideos.entity.InvalidatedToken;
 import org.springframework.data.jpa.repository.JpaRepository;

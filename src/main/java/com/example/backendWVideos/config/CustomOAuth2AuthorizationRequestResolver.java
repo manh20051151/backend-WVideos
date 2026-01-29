@@ -1,4 +1,4 @@
-﻿package com.example.backendWVideos.config;
+package com.example.backendWVideos.config;
 
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;

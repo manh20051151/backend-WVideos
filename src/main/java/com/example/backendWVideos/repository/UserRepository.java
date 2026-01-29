@@ -1,4 +1,4 @@
-﻿package com.example.backendWVideos.repository;
+package com.example.backendWVideos.repository;
 
 import com.example.backendWVideos.entity.User;
 import org.springframework.data.domain.Page;
@@ -47,7 +47,24 @@ public interface UserRepository extends JpaRepository<User, String> {
            "ORDER BY YEAR(u.joinedDate), MONTH(u.joinedDate)")
     java.util.List<Object[]> countMonthlyUserRegistrations();
     
-    // TODO: Thêm các query liên quan đến Document khi cần
+    // Thống kê tài liệu của user - DISABLED (Document entity not available)
     // @Query("SELECT COUNT(d) FROM Document d WHERE d.user.id = :userId")
     // Long countTotalDocumentsByUserId(@Param("userId") String userId);
+    
+    // @Query("SELECT COUNT(d) FROM Document d WHERE d.user.id = :userId AND d.status = 'APPROVED'")
+    // Long countApprovedDocumentsByUserId(@Param("userId") String userId);
+    
+    // @Query("SELECT COALESCE(SUM(d.viewCount), 0) FROM Document d WHERE d.user.id = :userId")
+    // Long getTotalViewsByUserId(@Param("userId") String userId);
+    
+    // @Query("SELECT COALESCE(SUM(d.downloadCount), 0) FROM Document d WHERE d.user.id = :userId")
+    // Long getTotalDownloadsByUserId(@Param("userId") String userId);
+    
+    // Load user kèm theo danh sách tài liệu đã mua - DISABLED (Document entity not available)
+    // @Query("SELECT u FROM User u LEFT JOIN FETCH u.purchasedDocuments WHERE u.id = :userId")
+    // Optional<User> findByIdWithPurchasedDocuments(@Param("userId") String userId);
+    
+    // Load user kèm theo roles (without purchasedDocuments)
+    @Query("SELECT u FROM User u LEFT JOIN FETCH u.roles WHERE u.id = :userId")
+    Optional<User> findByIdWithRolesAndPurchasedDocuments(@Param("userId") String userId);
 }

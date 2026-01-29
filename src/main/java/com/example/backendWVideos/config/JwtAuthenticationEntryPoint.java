@@ -1,4 +1,4 @@
-﻿package com.example.backendWVideos.config;
+package com.example.backendWVideos.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.example.backendWVideos.dto.request.ApiResponse;

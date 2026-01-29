@@ -1,4 +1,4 @@
-﻿package com.example.backendWVideos.service;
+package com.example.backendWVideos.service;
 
 import com.nimbusds.jose.*;
 import com.nimbusds.jose.crypto.MACSigner;

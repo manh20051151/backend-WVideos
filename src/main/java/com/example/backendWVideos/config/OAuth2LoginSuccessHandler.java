@@ -1,4 +1,4 @@
-﻿package com.example.backendWVideos.config;
+package com.example.backendWVideos.config;
 
 import com.example.backendWVideos.dto.response.AuthenticationResponse;
 import com.example.backendWVideos.entity.Role;

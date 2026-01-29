@@ -1,4 +1,4 @@
-﻿package com.example.backendWVideos.controller;
+package com.example.backendWVideos.controller;
 
 import com.nimbusds.jose.JOSEException;
 import com.example.backendWVideos.dto.request.*;

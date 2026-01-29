@@ -1,4 +1,4 @@
-﻿package com.example.backendWVideos.config;
+package com.example.backendWVideos.config;
 
 import com.example.backendWVideos.entity.Role;
 import com.example.backendWVideos.entity.User;

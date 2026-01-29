@@ -1,4 +1,4 @@
-﻿package com.example.backendWVideos.security;
+package com.example.backendWVideos.security;
 
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 

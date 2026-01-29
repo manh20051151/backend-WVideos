@@ -1,4 +1,4 @@
-﻿package com.example.backendWVideos.config;
+package com.example.backendWVideos.config;
 
 import com.nimbusds.jose.JOSEException;
 import com.example.backendWVideos.dto.request.IntrospectRequest;

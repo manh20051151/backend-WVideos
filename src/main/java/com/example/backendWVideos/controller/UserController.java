@@ -1,12 +1,8 @@
-﻿package com.example.backendWVideos.controller;
+package com.example.backendWVideos.controller;
 
 
 import com.example.backendWVideos.dto.request.*;
 import com.example.backendWVideos.dto.request.ChangePasswordRequest;
-import com.example.backendWVideos.dto.response.DocumentResponseDTO;
-import com.example.backendWVideos.dto.response.PurchasedDocumentResponse;
-import com.example.backendWVideos.dto.response.SellerTransactionResponse;
-import com.example.backendWVideos.enums.DocumentStatus;
 import com.example.backendWVideos.entity.User;
 import com.example.backendWVideos.exception.AppException;
 import com.example.backendWVideos.exception.ErrorCode;
@@ -21,18 +17,10 @@ import lombok.experimental.FieldDefaults;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 
-import java.io.IOException;
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 import java.util.List;
 import java.util.Map;
 
@@ -43,7 +31,7 @@ import java.util.Map;
 public class UserController {
     UserService userService;
     UserMapper userMapper;
-    private final UserRepository userRepository;
+    UserRepository userRepository;
     
     /**
      * Xác thực quyền admin từ server - endpoint này chỉ trả về success nếu user có role ADMIN
@@ -158,82 +146,6 @@ public class UserController {
             @Valid @RequestBody ChangePasswordRequest request) {
         
         return userService.changePassword(request);
-    }
-    
-    /**
-     * Lấy danh sách tài liệu đã mua của người dùng hiện tại
-     */
-    @GetMapping("/my-purchased-documents")
-    public ApiResponse<Page<PurchasedDocumentResponse>> getMyPurchasedDocuments(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
-        
-        Pageable pageable = PageRequest.of(page, size);
-        Page<PurchasedDocumentResponse> purchasedDocuments = userService.getMyPurchasedDocuments(pageable);
-        
-        return ApiResponse.<Page<PurchasedDocumentResponse>>builder()
-                .code(1000)
-                .message("Lấy danh sách tài liệu đã mua thành công")
-                .result(purchasedDocuments)
-                .build();
-    }
-    
-    /**
-     * Lấy danh sách tài liệu đã đăng của người dùng hiện tại
-     */
-    @GetMapping("/my-documents")
-    public ApiResponse<Page<DocumentResponseDTO>> getMyDocuments(
-            @RequestParam(required = false) DocumentStatus status,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
-        
-        Pageable pageable = PageRequest.of(page, size);
-        Page<DocumentResponseDTO> myDocuments = userService.getMyDocuments(status, pageable);
-        
-        String statusMessage = status != null ? 
-                "theo trạng thái " + status.getVietnameseName() : "tất cả";
-        
-        return ApiResponse.<Page<DocumentResponseDTO>>builder()
-                .code(1000)
-                .message("Lấy danh sách tài liệu đã đăng " + statusMessage + " thành công")
-                .result(myDocuments)
-                .build();
-    }
-    
-    /**
-     * Lấy danh sách giao dịch bán hàng của người dùng hiện tại
-     */
-    @GetMapping("/my-sales-transactions")
-    public ApiResponse<Page<SellerTransactionResponse>> getMySalesTransactions(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
-        
-        Pageable pageable = PageRequest.of(page, size);
-        Page<SellerTransactionResponse> salesTransactions = userService.getMySalesTransactions(pageable);
-        
-        return ApiResponse.<Page<SellerTransactionResponse>>builder()
-                .code(1000)
-                .message("Lấy danh sách giao dịch bán hàng thành công")
-                .result(salesTransactions)
-                .build();
-    }
-    
-    /**
-     * Lấy danh sách giao dịch mua hàng của người dùng hiện tại
-     */
-    @GetMapping("/my-purchase-transactions")
-    public ApiResponse<Page<PurchasedDocumentResponse>> getMyPurchaseTransactions(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
-        
-        Pageable pageable = PageRequest.of(page, size);
-        Page<PurchasedDocumentResponse> purchaseTransactions = userService.getMyPurchaseTransactions(pageable);
-        
-        return ApiResponse.<Page<PurchasedDocumentResponse>>builder()
-                .code(1000)
-                .message("Lấy danh sách giao dịch mua hàng thành công")
-                .result(purchaseTransactions)
-                .build();
     }
 
     @PostMapping("/{userId}/lock")

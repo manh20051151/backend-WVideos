@@ -1,4 +1,4 @@
-﻿package com.example.backendWVideos.entity;
+package com.example.backendWVideos.entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
@@ -75,11 +75,6 @@ public class User {
     @Temporal(TemporalType.TIMESTAMP)
     private Date joinedDate; // Ngày tham gia hệ thống
 
-    // TODO: Thêm relationship với Document entity khi cần
-    // @OneToMany(mappedBy = "user", cascade = CascadeType.ALL)
-    // @JsonManagedReference
-    // private Set<Document> documents;
-
     // Thông tin tài chính
     @Column(name = "balance", columnDefinition = "DECIMAL(15,2) DEFAULT 0.00")
     @Builder.Default
@@ -98,11 +93,6 @@ public class User {
     
     @Column(name = "bank_account_number", length = 20)
     private String bankAccountNumber; // Số tài khoản ngân hàng
-    
-    // TODO: Thêm relationship với Document entity khi cần
-    // @ManyToMany(mappedBy = "buyers", fetch = FetchType.LAZY)
-    // @JsonIgnoreProperties({"user", "buyers", "parentCategories", "category"})
-    // private Set<Document> purchasedDocuments = new HashSet<>();
     
     // Phương thức khóa tài khoản
     public void lock(User lockedByUser, String reason) {

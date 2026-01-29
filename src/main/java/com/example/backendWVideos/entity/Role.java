@@ -1,4 +1,4 @@
-﻿package com.example.backendWVideos.entity;
+package com.example.backendWVideos.entity;
 
 import jakarta.persistence.*;
 import lombok.*;

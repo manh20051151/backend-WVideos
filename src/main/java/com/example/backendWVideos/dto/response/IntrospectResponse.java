@@ -1,4 +1,4 @@
-﻿package com.example.backendWVideos.dto.response;
+package com.example.backendWVideos.dto.response;
 
 import lombok.*;
 import lombok.experimental.FieldDefaults;

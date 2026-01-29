@@ -1,4 +1,4 @@
-﻿package com.example.backendWVideos.exception;
+package com.example.backendWVideos.exception;
 
 public class AppException extends RuntimeException{
 

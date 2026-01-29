@@ -1,5 +1,4 @@
-package com.example.backendWVideos.dto.request;
-
+package com.example.backendWVideos.dto.response;
 
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -9,6 +8,7 @@ import lombok.experimental.FieldDefaults;
 @NoArgsConstructor
 @AllArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class IntrospectRequest {
-    String token;
+public class PermissionResponse {
+    String name;
+    String description;
 }
