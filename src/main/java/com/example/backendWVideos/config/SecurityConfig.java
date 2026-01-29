@@ -49,7 +49,11 @@ public class SecurityConfig {
 
     private final String[] PUBLIC_ENDPOINTS_ALL = {
             "/ws/**",  // WebSocket endpoint
-            "/webhook/**"  // Webhook endpoint cho CI/CD deploy
+            "/webhook/**",  // Webhook endpoint cho CI/CD deploy
+            "/swagger-ui/**",  // Swagger UI
+            "/v3/api-docs/**",  // OpenAPI docs
+            "/swagger-resources/**",  // Swagger resources
+            "/webjars/**"  // Swagger webjars
     };
 
     private final CustomJwtDecoder customJwtDecoder;
