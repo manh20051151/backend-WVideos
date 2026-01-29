@@ -1,5 +1,7 @@
 # WVideos Backend API
 
+**Version: 1.0.0**
+
 Backend API cho hệ thống WVideos với JWT Authentication và Swagger Documentation.
 
 ## 🚀 Quick Start
@@ -46,6 +48,13 @@ backendWVideos/
 - Email: `admin@wvideos.com`
 - Password: `admin123`
 
+## 📹 Features
+
+- ✅ User Authentication (JWT)
+- ✅ Video Upload & Management
+- 🔄 Video Streaming
+- 🔄 Comments & Ratings
+
 ## 🛠️ Tech Stack
 
 - Java 17 + Spring Boot 3.2.2
@@ -53,3 +62,24 @@ backendWVideos/
 - MySQL 8
 - Swagger/OpenAPI 3
 - Lombok + MapStruct
+
+## 🌿 Git Flow
+
+Project sử dụng Git Flow workflow:
+
+- **master**: Production-ready code
+- **develop**: Development branch
+- **feature/\***: Feature branches (từ develop)
+- **release/\***: Release branches (từ develop)
+- **hotfix/\***: Hotfix branches (từ master)
+
+### Workflow
+```
+master ───────●────────●─────────
+       │        │
+develop ────●──●─────●────●────
+       │         │
+feature ────────●         │
+                │
+release ─────────────●────┘
+```
