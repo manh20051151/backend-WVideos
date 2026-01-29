@@ -78,6 +78,8 @@ public class SecurityConfig {
                     .requestMatchers("/auth/**").permitAll()
                         .requestMatchers("/socket.io/**").permitAll()
                         .requestMatchers(PUBLIC_ENDPOINTS_ALL).permitAll()
+                        // Swagger UI endpoints
+                        .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**", "/swagger-resources/**", "/webjars/**").permitAll()
                     .requestMatchers(HttpMethod.GET, "/users/notoken/**").permitAll()
                     .requestMatchers(HttpMethod.POST, "/users/forgot-password/**").permitAll()
                     .anyRequest().authenticated()
