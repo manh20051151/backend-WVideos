@@ -46,6 +46,13 @@ backendWVideos/
 - Email: `admin@wvideos.com`
 - Password: `admin123`
 
+## 📹 Features
+
+- ✅ User Authentication (JWT)
+- ✅ Video Upload & Management
+- 🔄 Video Streaming
+- 🔄 Comments & Ratings
+
 ## 🛠️ Tech Stack
 
 - Java 17 + Spring Boot 3.2.2
