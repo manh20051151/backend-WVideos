@@ -53,3 +53,24 @@ backendWVideos/
 - MySQL 8
 - Swagger/OpenAPI 3
 - Lombok + MapStruct
+
+## 🌿 Git Flow
+
+Project sử dụng Git Flow workflow:
+
+- **master**: Production-ready code
+- **develop**: Development branch
+- **feature/\***: Feature branches (từ develop)
+- **release/\***: Release branches (từ develop)
+- **hotfix/\***: Hotfix branches (từ master)
+
+### Workflow
+```
+master ───────●────────●─────────
+       │        │
+develop ────●──●─────●────●────
+       │         │
+feature ────────●         │
+                │
+release ─────────────●────┘
+```
