@@ -1,5 +1,7 @@
 # WVideos Backend API
 
+**Version: 1.0.0**
+
 Backend API cho hệ thống WVideos với JWT Authentication và Swagger Documentation.
 
 ## 🚀 Quick Start
