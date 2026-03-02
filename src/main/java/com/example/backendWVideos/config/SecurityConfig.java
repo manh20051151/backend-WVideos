@@ -44,12 +44,16 @@ public class SecurityConfig {
     
     private final String[] PUBLIC_ENDPOINTS_GET = {
         "/users/confirm",
-        "/users/confirm/**"
+        "/users/confirm/**",
+        "/videos/public",  // Public videos
+        "/videos/*/view"   // Increment views
     };
 
     private final String[] PUBLIC_ENDPOINTS_ALL = {
             "/ws/**",  // WebSocket endpoint
             "/webhook/**",  // Webhook endpoint cho CI/CD deploy
+            "/oauth2/**",  // OAuth2 endpoints
+            "/login/oauth2/**",  // OAuth2 login endpoints
             "/swagger-ui/**",  // Swagger UI
             "/v3/api-docs/**",  // OpenAPI docs
             "/swagger-resources/**",  // Swagger resources
@@ -98,15 +102,15 @@ public class SecurityConfig {
                 )
                 .authenticationEntryPoint(new JwtAuthenticationEntryPoint())
             )
-            // Disable OAuth2 Login for now - can be enabled later
-            // .oauth2Login(oauth2 -> oauth2
-            //     .successHandler(oAuth2LoginSuccessHandler)
-            //     .authorizationEndpoint(authorization -> authorization
-            //         .baseUri("/oauth2/authorization")
-            //         .authorizationRequestResolver(authorizationRequestResolver()))
-            //     .redirectionEndpoint(redirection -> redirection
-            //         .baseUri("/oauth2/callback/*"))
-            // )
+            // Enable OAuth2 Login
+            .oauth2Login(oauth2 -> oauth2
+                .successHandler(oAuth2LoginSuccessHandler)
+                .failureUrl("/login?error=true")
+                .authorizationEndpoint(authorization -> authorization
+                    .baseUri("/oauth2/authorization"))
+                .redirectionEndpoint(redirection -> redirection
+                    .baseUri("/oauth2/callback/*"))
+            )
             // Disable default form login redirect cho API requests
             .exceptionHandling(exception -> exception
                 .authenticationEntryPoint(new JwtAuthenticationEntryPoint())
@@ -118,7 +122,7 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(Collections.singletonList(frontendUrl));
+        configuration.setAllowedOrigins(Arrays.asList(frontendUrl, "http://localhost:3000"));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD", "PATCH"));
         configuration.setAllowedHeaders(Arrays.asList(
             "Authorization",

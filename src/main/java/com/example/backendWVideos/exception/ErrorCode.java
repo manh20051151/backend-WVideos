@@ -71,7 +71,7 @@ public enum ErrorCode {
     // File validation errors
     FILE_NOT_FOUND(9201, "Không tìm thấy file", HttpStatus.BAD_REQUEST),
     INVALID_FILE_NAME(9202, "Tên file không hợp lệ", HttpStatus.BAD_REQUEST),
-    FILE_TOO_LARGE(9203, "File quá lớn (tối đa 50MB)", HttpStatus.BAD_REQUEST),
+    FILE_TOO_LARGE(9203, "File quá lớn (tối đa 2GB)", HttpStatus.BAD_REQUEST),
     INVALID_FILE_TYPE(9204, "Loại file không được hỗ trợ", HttpStatus.BAD_REQUEST),
     FILE_CORRUPTED(9205, "File bị lỗi hoặc không thể đọc", HttpStatus.BAD_REQUEST),
     
@@ -87,6 +87,12 @@ public enum ErrorCode {
     
     // Document report errors
     DOCUMENT_REPORT_ALREADY_EXISTS(9501, "Bạn đã báo cáo tài liệu này rồi. Mỗi người dùng chỉ có thể báo cáo một tài liệu một lần", HttpStatus.BAD_REQUEST),
+    
+    // Video errors
+    VIDEO_NOT_FOUND(9601, "Không tìm thấy video", HttpStatus.NOT_FOUND),
+    FILE_EMPTY(9602, "File không được để trống", HttpStatus.BAD_REQUEST),
+    DOODSTREAM_ERROR(9603, "Lỗi kết nối DoodStream", HttpStatus.INTERNAL_SERVER_ERROR),
+    UPLOAD_FAILED(9604, "Upload video thất bại", HttpStatus.INTERNAL_SERVER_ERROR),
     ;
 
     ErrorCode(int code, String message, HttpStatusCode statusCode) {
