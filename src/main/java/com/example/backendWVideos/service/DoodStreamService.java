@@ -153,10 +153,14 @@ public class DoodStreamService {
         try {
             String url = apiBaseUrl + "/file/info?key=" + apiKey + "&file_code=" + fileCode;
             
+            log.info("🔍 Calling DoodStream file info API: {}", url.replace(apiKey, "***"));
+            
             ResponseEntity<Map> response = restTemplate.getForEntity(url, Map.class);
             
             if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
-                return response.getBody();
+                Map<String, Object> responseBody = response.getBody();
+                log.info("📊 DoodStream file info response: {}", responseBody);
+                return responseBody;
             }
             
             throw new AppException(ErrorCode.DOODSTREAM_ERROR);
@@ -166,4 +170,26 @@ public class DoodStreamService {
             throw new AppException(ErrorCode.DOODSTREAM_ERROR);
         }
     }
+
+    /**
+     * Lấy danh sách file từ DoodStream
+     */
+    public Map<String, Object> getFileList() {
+        try {
+            String url = apiBaseUrl + "/file/list?key=" + apiKey;
+            
+            ResponseEntity<Map> response = restTemplate.getForEntity(url, Map.class);
+            
+            if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
+                return response.getBody();
+            }
+            
+            throw new AppException(ErrorCode.DOODSTREAM_ERROR);
+            
+        } catch (Exception e) {
+            log.error("❌ Lỗi khi lấy danh sách file: {}", e.getMessage());
+            throw new AppException(ErrorCode.DOODSTREAM_ERROR);
+        }
+    }
+}
 }

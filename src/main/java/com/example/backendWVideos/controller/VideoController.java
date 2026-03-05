@@ -19,6 +19,8 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.Map;
+
 @RestController
 @RequestMapping("/videos")
 @RequiredArgsConstructor
@@ -136,9 +138,7 @@ public class VideoController {
                 .build();
     }
     
-    /**
-     * Sync thông tin video từ DoodStream
-     */
+    @Operation(summary = "Sync video info from DoodStream", description = "Force sync thông tin video từ DoodStream")
     @PostMapping("/{videoId}/sync")
     public ApiResponse<VideoResponse> syncVideoInfo(
             @PathVariable String videoId

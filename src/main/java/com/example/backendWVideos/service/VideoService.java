@@ -116,8 +116,13 @@ public class VideoService {
         
         Page<Video> videos = videoRepository.findByUserId(user.getId(), pageable);
         
+        log.info("📋 Found {} videos for user {}", videos.getTotalElements(), userEmail);
+        
         // Chỉ sync video cần thiết (PROCESSING hoặc chưa có thumbnail)
         videos.forEach(video -> {
+            log.info("🔍 Checking video {}: status={}, fileCode={}, lastSync={}", 
+                video.getId(), video.getStatus(), video.getFileCode(), video.getLastSyncedAt());
+                
             if (shouldSyncVideo(video)) {
                 try {
                     syncVideoInfoSilent(video);
@@ -141,27 +146,37 @@ public class VideoService {
      */
     private boolean shouldSyncVideo(Video video) {
         if (video.getFileCode() == null || video.getFileCode().isEmpty()) {
+            log.debug("❌ Skip sync video {}: No fileCode", video.getId());
             return false;
         }
         
         // 1. Video đang PROCESSING hoặc UPLOADING - luôn sync
         if (video.getStatus() == VideoStatus.PROCESSING || video.getStatus() == VideoStatus.UPLOADING) {
+            log.info("✅ Sync video {} - Status: {}", video.getId(), video.getStatus());
             return true;
         }
         
         // 2. Video chưa có splash image - cần sync để lấy thumbnail
         if (video.getSplashImageUrl() == null || video.getSplashImageUrl().isEmpty()) {
+            log.debug("✅ Sync video {} - No splash image", video.getId());
             return true;
         }
         
         // 3. Chưa sync lần nào - cần sync
         if (video.getLastSyncedAt() == null) {
+            log.debug("✅ Sync video {} - Never synced", video.getId());
             return true;
         }
         
         // 4. Đã sync nhưng quá 5 phút - sync lại để cập nhật views, status
         LocalDateTime fiveMinutesAgo = LocalDateTime.now().minusMinutes(5);
-        return video.getLastSyncedAt().isBefore(fiveMinutesAgo);
+        boolean shouldSync = video.getLastSyncedAt().isBefore(fiveMinutesAgo);
+        if (shouldSync) {
+            log.info("✅ Sync video {} - Last sync: {}", video.getId(), video.getLastSyncedAt());
+        } else {
+            log.info("⏭️ Skip sync video {} - Recently synced: {}", video.getId(), video.getLastSyncedAt());
+        }
+        return shouldSync;
     }
     
     /**
@@ -169,51 +184,77 @@ public class VideoService {
      */
     private void syncVideoInfoSilent(Video video) {
         try {
-            Map<String, Object> fileInfo = doodStreamService.getFileInfo(video.getFileCode());
-            
-            if (fileInfo != null && fileInfo.get("result") != null) {
-                List<Map<String, Object>> results = (List<Map<String, Object>>) fileInfo.get("result");
+            log.info("🔄 Syncing video {}: fileCode={}, status={}", 
+                video.getId(), video.getFileCode(), video.getStatus());
                 
-                if (!results.isEmpty()) {
-                    Map<String, Object> result = results.get(0);
+            // Sử dụng file/list API thay vì file/info vì file/list cho kết quả chính xác hơn
+            Map<String, Object> fileListResponse = doodStreamService.getFileList();
+            
+            if (fileListResponse != null && fileListResponse.get("result") != null) {
+                Map<String, Object> listResult = (Map<String, Object>) fileListResponse.get("result");
+                List<Map<String, Object>> files = (List<Map<String, Object>>) listResult.get("files");
+                
+                // Tìm file theo fileCode
+                Map<String, Object> fileData = files.stream()
+                    .filter(file -> video.getFileCode().equals(file.get("file_code")))
+                    .findFirst()
+                    .orElse(null);
+                
+                if (fileData != null) {
+                    log.info("📊 DoodStream file list response for {}: canplay={}, views={}", 
+                        video.getId(), fileData.get("canplay"), fileData.get("views"));
                     
-                    // Cập nhật thông tin video
-                    if (result.get("views") != null) {
-                        video.setViews(Long.parseLong(result.get("views").toString()));
+                    // Cập nhật thông tin video từ file list
+                    if (fileData.get("views") != null) {
+                        video.setViews(Long.parseLong(fileData.get("views").toString()));
                     }
                     
-                    if (result.get("size") != null) {
-                        video.setFileSize(Long.parseLong(result.get("size").toString()));
+                    // File list không có size, giữ nguyên size hiện tại
+                    
+                    if (fileData.get("length") != null) {
+                        video.setDuration(Long.parseLong(fileData.get("length").toString()));
                     }
                     
-                    if (result.get("length") != null) {
-                        video.setDuration(Long.parseLong(result.get("length").toString()));
-                    }
-                    
-                    if (result.get("canplay") != null) {
-                        int canPlay = Integer.parseInt(result.get("canplay").toString());
-                        video.setStatus(canPlay == 1 ? VideoStatus.READY : VideoStatus.PROCESSING);
+                    if (fileData.get("canplay") != null) {
+                        int canPlay = Integer.parseInt(fileData.get("canplay").toString());
+                        VideoStatus oldStatus = video.getStatus();
+                        VideoStatus newStatus = canPlay == 1 ? VideoStatus.READY : VideoStatus.PROCESSING;
+                        video.setStatus(newStatus);
+                        
+                        if (oldStatus != newStatus) {
+                            log.info("🔄 Status changed for video {}: {} -> {} (using file/list API)", 
+                                video.getId(), oldStatus, newStatus);
+                        }
                     }
                     
                     // Cập nhật thumbnails nếu có
-                    if (result.get("single_img") != null) {
-                        video.setThumbnailUrl(result.get("single_img").toString());
+                    if (fileData.get("single_img") != null) {
+                        video.setThumbnailUrl(fileData.get("single_img").toString());
                     }
                     
-                    if (result.get("splash_img") != null) {
-                        video.setSplashImageUrl(result.get("splash_img").toString());
+                    if (fileData.get("splash_img") != null) {
+                        video.setSplashImageUrl(fileData.get("splash_img").toString());
+                    }
+                    
+                    // Cập nhật download URL từ file list
+                    if (fileData.get("download_url") != null) {
+                        video.setDownloadUrl(fileData.get("download_url").toString());
                     }
                     
                     // Cập nhật timestamp sync
                     video.setLastSyncedAt(LocalDateTime.now());
                     
                     videoRepository.save(video);
-                    log.debug("✅ Auto-sync video {}: {} views, status={}", 
+                    log.info("✅ Auto-sync video {}: {} views, status={} (via file/list)", 
                         video.getId(), video.getViews(), video.getStatus());
+                } else {
+                    log.warn("⚠️ File {} not found in DoodStream file list", video.getFileCode());
                 }
+            } else {
+                log.warn("⚠️ No result from DoodStream file list");
             }
         } catch (Exception e) {
-            log.debug("⚠️ Skip sync for video {}: {}", video.getId(), e.getMessage());
+            log.warn("⚠️ Sync failed for video {}: {}", video.getId(), e.getMessage());
             // Không throw exception, dùng data cũ trong database
         }
     }
@@ -396,5 +437,61 @@ public class VideoService {
             log.error("❌ Lỗi khi sync thông tin video: {}", e.getMessage());
             throw new AppException(ErrorCode.DOODSTREAM_ERROR);
         }
+    }
+    
+    /**
+     * Test so sánh DoodStream APIs
+     */
+    public Map<String, Object> testDoodStreamAPIs(String fileCode) {
+        Map<String, Object> result = new HashMap<>();
+        
+        try {
+            // Test file/info API
+            Map<String, Object> fileInfo = doodStreamService.getFileInfo(fileCode);
+            result.put("fileInfo", fileInfo);
+            
+            // Test file/list API
+            Map<String, Object> fileList = doodStreamService.getFileList();
+            result.put("fileList", fileList);
+            
+            // Tìm file trong list
+            if (fileList.get("result") != null) {
+                Map<String, Object> listResult = (Map<String, Object>) fileList.get("result");
+                List<Map<String, Object>> files = (List<Map<String, Object>>) listResult.get("files");
+                
+                Map<String, Object> foundFile = files.stream()
+                    .filter(file -> fileCode.equals(file.get("file_code")))
+                    .findFirst()
+                    .orElse(null);
+                    
+                result.put("foundInList", foundFile);
+            }
+            
+            log.info("🧪 Test result for {}: fileInfo canplay={}, list canplay={}", 
+                fileCode, 
+                extractCanplay(fileInfo),
+                extractCanplayFromList(result));
+                
+        } catch (Exception e) {
+            log.error("❌ Error testing APIs: {}", e.getMessage());
+            result.put("error", e.getMessage());
+        }
+        
+        return result;
+    }
+    
+    private Object extractCanplay(Map<String, Object> fileInfo) {
+        if (fileInfo != null && fileInfo.get("result") != null) {
+            List<Map<String, Object>> results = (List<Map<String, Object>>) fileInfo.get("result");
+            if (!results.isEmpty()) {
+                return results.get(0).get("canplay");
+            }
+        }
+        return null;
+    }
+    
+    private Object extractCanplayFromList(Map<String, Object> testResult) {
+        Map<String, Object> foundFile = (Map<String, Object>) testResult.get("foundInList");
+        return foundFile != null ? foundFile.get("canplay") : null;
     }
 }
