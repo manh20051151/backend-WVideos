@@ -7,6 +7,7 @@ import com.example.backendWVideos.dto.response.VideoResponse;
 import com.example.backendWVideos.service.VideoService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -130,12 +131,33 @@ public class VideoController {
 
     @Operation(summary = "Increment views", description = "Tăng lượt xem video")
     @PostMapping("/{videoId}/view")
-    public ApiResponse<Void> incrementViews(@PathVariable String videoId) {
-        videoService.incrementViews(videoId);
+    public ApiResponse<Void> incrementViews(
+            @PathVariable String videoId,
+            HttpServletRequest request
+    ) {
+        String clientIp = getClientIpAddress(request);
+        videoService.incrementViews(videoId, clientIp);
         
         return ApiResponse.<Void>builder()
                 .message("Đã tăng lượt xem")
                 .build();
+    }
+    
+    /**
+     * Lấy IP address thực của client
+     */
+    private String getClientIpAddress(HttpServletRequest request) {
+        String xForwardedFor = request.getHeader("X-Forwarded-For");
+        if (xForwardedFor != null && !xForwardedFor.isEmpty()) {
+            return xForwardedFor.split(",")[0].trim();
+        }
+        
+        String xRealIp = request.getHeader("X-Real-IP");
+        if (xRealIp != null && !xRealIp.isEmpty()) {
+            return xRealIp;
+        }
+        
+        return request.getRemoteAddr();
     }
     
     @Operation(summary = "Sync video info from DoodStream", description = "Force sync thông tin video từ DoodStream")

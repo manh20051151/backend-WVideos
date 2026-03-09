@@ -30,6 +30,21 @@ spring:
       max-request-size: 2GB
       file-size-threshold: 10MB
   
+  # Redis Configuration
+  data:
+    redis:
+      host: ${env.REDIS_HOST:localhost}
+      port: ${env.REDIS_PORT:6379}
+      password: ${env.REDIS_PASSWORD:}
+      database: ${env.REDIS_DATABASE:0}
+      timeout: 2000ms
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 8
+          min-idle: 0
+          max-wait: -1ms
+  
   # OAuth2 Configuration
   security:
     oauth2:
