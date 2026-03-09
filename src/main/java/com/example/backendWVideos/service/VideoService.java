@@ -55,18 +55,29 @@ public class VideoService {
         User user = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
 
-        // Lấy category nếu có
-        com.example.backendWVideos.entity.Category category = null;
-        if (request.getCategoryId() != null && !request.getCategoryId().trim().isEmpty()) {
-            try {
-                categoryService.getCategoryById(request.getCategoryId());
-                // Nếu không có exception thì category tồn tại, lấy từ DB
-                category = new com.example.backendWVideos.entity.Category();
-                category.setId(request.getCategoryId());
-            } catch (Exception e) {
-                log.warn("⚠️ Category không tồn tại: {}", request.getCategoryId());
-                // Tiếp tục upload mà không có category
+        // Lấy categories nếu có (yêu cầu ít nhất 3 categories)
+        java.util.Set<com.example.backendWVideos.entity.Category> categories = new java.util.HashSet<>();
+        if (request.getCategoryIds() != null && !request.getCategoryIds().isEmpty()) {
+            if (request.getCategoryIds().size() < 3) {
+                throw new AppException(ErrorCode.INVALID_REQUEST);
             }
+            
+            for (String categoryId : request.getCategoryIds()) {
+                try {
+                    categoryService.getCategoryById(categoryId);
+                    com.example.backendWVideos.entity.Category category = new com.example.backendWVideos.entity.Category();
+                    category.setId(categoryId);
+                    categories.add(category);
+                } catch (Exception e) {
+                    log.warn("⚠️ Category không tồn tại: {}", categoryId);
+                }
+            }
+            
+            if (categories.size() < 3) {
+                throw new AppException(ErrorCode.INVALID_REQUEST);
+            }
+        } else {
+            throw new AppException(ErrorCode.INVALID_REQUEST);
         }
 
         // Tạo video record với status UPLOADING
@@ -76,7 +87,7 @@ public class VideoService {
                 .isPublic(request.getIsPublic())
                 .status(VideoStatus.UPLOADING)
                 .user(user)
-                .category(category)
+                .categories(categories)
                 .build();
 
         video = videoRepository.save(video);
@@ -189,23 +200,33 @@ public class VideoService {
             video.setIsPublic(request.getIsPublic());
         }
         
-        // Cập nhật category
-        if (request.getCategoryId() != null) {
-            if (request.getCategoryId().trim().isEmpty()) {
-                // Nếu categoryId là chuỗi rỗng, xóa category
-                video.setCategory(null);
-            } else {
-                // Kiểm tra category có tồn tại không
+        // Cập nhật categories (yêu cầu ít nhất 3 categories)
+        if (request.getCategoryIds() != null) {
+            if (request.getCategoryIds().isEmpty()) {
+                throw new AppException(ErrorCode.INVALID_REQUEST);
+            }
+            
+            if (request.getCategoryIds().size() < 3) {
+                throw new AppException(ErrorCode.INVALID_REQUEST);
+            }
+            
+            java.util.Set<com.example.backendWVideos.entity.Category> categories = new java.util.HashSet<>();
+            for (String categoryId : request.getCategoryIds()) {
                 try {
-                    categoryService.getCategoryById(request.getCategoryId());
+                    categoryService.getCategoryById(categoryId);
                     com.example.backendWVideos.entity.Category category = new com.example.backendWVideos.entity.Category();
-                    category.setId(request.getCategoryId());
-                    video.setCategory(category);
+                    category.setId(categoryId);
+                    categories.add(category);
                 } catch (Exception e) {
-                    log.warn("⚠️ Category không tồn tại khi update: {}", request.getCategoryId());
-                    // Không cập nhật category nếu không tồn tại
+                    log.warn("⚠️ Category không tồn tại khi update: {}", categoryId);
                 }
             }
+            
+            if (categories.size() < 3) {
+                throw new AppException(ErrorCode.INVALID_REQUEST);
+            }
+            
+            video.setCategories(categories);
         }
 
         video = videoRepository.save(video);

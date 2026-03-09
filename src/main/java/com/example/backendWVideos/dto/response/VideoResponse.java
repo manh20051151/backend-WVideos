@@ -4,6 +4,7 @@ import com.example.backendWVideos.enums.VideoStatus;
 import lombok.*;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Data
 @Builder
@@ -26,7 +27,7 @@ public class VideoResponse {
     private Long views;
     private VideoStatus status;
     private Boolean isPublic;
-    private CategoryResponse category; // Đổi từ VideoCategory enum sang CategoryResponse
+    private List<CategoryResponse> categories; // Đổi từ CategoryResponse sang List<CategoryResponse>
     private String userId;
     private String username;
     private LocalDateTime createdAt;

@@ -7,6 +7,8 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
+import java.util.HashSet;
+import java.util.Set;
 
 @Entity
 @Table(name = "videos")
@@ -73,10 +75,14 @@ public class Video {
     @Column(name = "is_public")
     private Boolean isPublic = true;
     
-    // Thể loại video (có thể null)
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "category_id")
-    private Category category;
+    // Thể loại video (nhiều thể loại)
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+        name = "video_categories",
+        joinColumns = @JoinColumn(name = "video_id"),
+        inverseJoinColumns = @JoinColumn(name = "category_id")
+    )
+    private Set<Category> categories = new HashSet<>();
     
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)

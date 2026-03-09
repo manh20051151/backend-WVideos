@@ -3,6 +3,8 @@ package com.example.backendWVideos.dto.request;
 import jakarta.validation.constraints.Size;
 import lombok.*;
 
+import java.util.List;
+
 @Data
 @Builder
 @NoArgsConstructor
@@ -17,6 +19,7 @@ public class VideoUpdateRequest {
     
     private Boolean isPublic;
     
-    // ID của thể loại (có thể null để xóa thể loại)
-    private String categoryId;
+    // Danh sách ID của các thể loại (yêu cầu ít nhất 3 nếu có)
+    @Size(min = 3, message = "Phải chọn ít nhất 3 thể loại")
+    private List<String> categoryIds;
 }

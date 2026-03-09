@@ -1,8 +1,11 @@
 package com.example.backendWVideos.dto.request;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.Size;
 import lombok.*;
+
+import java.util.List;
 
 @Data
 @Builder
@@ -19,6 +22,8 @@ public class VideoUploadRequest {
     
     private Boolean isPublic = true;
     
-    // ID của thể loại (có thể null)
-    private String categoryId;
+    // Danh sách ID của các thể loại (yêu cầu ít nhất 3)
+    @NotEmpty(message = "Phải chọn ít nhất 3 thể loại")
+    @Size(min = 3, message = "Phải chọn ít nhất 3 thể loại")
+    private List<String> categoryIds;
 }

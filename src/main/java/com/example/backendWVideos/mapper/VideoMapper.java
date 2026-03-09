@@ -5,6 +5,9 @@ import com.example.backendWVideos.dto.response.VideoResponse;
 import com.example.backendWVideos.entity.Video;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
+import java.util.stream.Collectors;
+
 @Component
 public class VideoMapper {
     
@@ -32,13 +35,26 @@ public class VideoMapper {
                 .views(video.getViews())
                 .status(video.getStatus())
                 .isPublic(video.getIsPublic())
-                .category(mapCategoryToResponse(video.getCategory()))
+                .categories(mapCategoriesToResponse(video.getCategories()))
                 .userId(video.getUser() != null ? video.getUser().getId() : null)
                 .username(video.getUser() != null ? video.getUser().getUsername() : null)
                 .createdAt(video.getCreatedAt())
                 .updatedAt(video.getUpdatedAt())
                 .uploadedToDoodStreamAt(video.getUploadedToDoodStreamAt())
                 .build();
+    }
+    
+    /**
+     * Chuyển đổi Set<Category> sang List<CategoryResponse>
+     */
+    private List<CategoryResponse> mapCategoriesToResponse(java.util.Set<com.example.backendWVideos.entity.Category> categories) {
+        if (categories == null || categories.isEmpty()) {
+            return List.of();
+        }
+        
+        return categories.stream()
+                .map(this::mapCategoryToResponse)
+                .collect(Collectors.toList());
     }
     
     /**
