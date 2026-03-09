@@ -18,4 +18,7 @@ public class VideoUploadRequest {
     private String description;
     
     private Boolean isPublic = true;
+    
+    // ID của thể loại (có thể null)
+    private String categoryId;
 }

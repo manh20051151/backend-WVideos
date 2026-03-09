@@ -26,6 +26,7 @@ public class VideoResponse {
     private Long views;
     private VideoStatus status;
     private Boolean isPublic;
+    private CategoryResponse category; // Đổi từ VideoCategory enum sang CategoryResponse
     private String userId;
     private String username;
     private LocalDateTime createdAt;

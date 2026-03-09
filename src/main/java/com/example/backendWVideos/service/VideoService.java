@@ -37,6 +37,7 @@ public class VideoService {
     private final DoodStreamService doodStreamService;
     private final VideoMapper videoMapper;
     private final RedisTemplate<String, String> redisTemplate;
+    private final CategoryService categoryService;
 
     /**
      * Upload video lên DoodStream
@@ -54,6 +55,20 @@ public class VideoService {
         User user = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
 
+        // Lấy category nếu có
+        com.example.backendWVideos.entity.Category category = null;
+        if (request.getCategoryId() != null && !request.getCategoryId().trim().isEmpty()) {
+            try {
+                categoryService.getCategoryById(request.getCategoryId());
+                // Nếu không có exception thì category tồn tại, lấy từ DB
+                category = new com.example.backendWVideos.entity.Category();
+                category.setId(request.getCategoryId());
+            } catch (Exception e) {
+                log.warn("⚠️ Category không tồn tại: {}", request.getCategoryId());
+                // Tiếp tục upload mà không có category
+            }
+        }
+
         // Tạo video record với status UPLOADING
         Video video = Video.builder()
                 .title(request.getTitle())
@@ -61,6 +76,7 @@ public class VideoService {
                 .isPublic(request.getIsPublic())
                 .status(VideoStatus.UPLOADING)
                 .user(user)
+                .category(category)
                 .build();
 
         video = videoRepository.save(video);
@@ -171,6 +187,25 @@ public class VideoService {
         }
         if (request.getIsPublic() != null) {
             video.setIsPublic(request.getIsPublic());
+        }
+        
+        // Cập nhật category
+        if (request.getCategoryId() != null) {
+            if (request.getCategoryId().trim().isEmpty()) {
+                // Nếu categoryId là chuỗi rỗng, xóa category
+                video.setCategory(null);
+            } else {
+                // Kiểm tra category có tồn tại không
+                try {
+                    categoryService.getCategoryById(request.getCategoryId());
+                    com.example.backendWVideos.entity.Category category = new com.example.backendWVideos.entity.Category();
+                    category.setId(request.getCategoryId());
+                    video.setCategory(category);
+                } catch (Exception e) {
+                    log.warn("⚠️ Category không tồn tại khi update: {}", request.getCategoryId());
+                    // Không cập nhật category nếu không tồn tại
+                }
+            }
         }
 
         video = videoRepository.save(video);

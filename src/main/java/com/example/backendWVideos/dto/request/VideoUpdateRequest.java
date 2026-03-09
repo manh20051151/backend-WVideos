@@ -16,4 +16,7 @@ public class VideoUpdateRequest {
     private String description;
     
     private Boolean isPublic;
+    
+    // ID của thể loại (có thể null để xóa thể loại)
+    private String categoryId;
 }

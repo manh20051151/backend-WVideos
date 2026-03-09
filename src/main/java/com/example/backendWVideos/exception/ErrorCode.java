@@ -41,8 +41,9 @@ public enum ErrorCode {
 
     CATEGORY_NOT_FOUND(6001, "Không tìm thấy danh mục", HttpStatus.NOT_FOUND),
     CATEGORY_NAME_EXISTED(6002, "Tên danh mục đã tồn tại", HttpStatus.BAD_REQUEST),
-    CATEGORY_LEVEL_EXCEEDED(6003, "Vượt quá số cấp cho phép", HttpStatus.BAD_REQUEST),
-    CATEGORY_EXISTED(6003, "Vui lòng chọn danh mục cấp thấp nhất", HttpStatus.BAD_REQUEST),
+    CATEGORY_SLUG_EXISTED(6003, "Slug danh mục đã tồn tại", HttpStatus.BAD_REQUEST),
+    CATEGORY_LEVEL_EXCEEDED(6004, "Vượt quá số cấp cho phép", HttpStatus.BAD_REQUEST),
+    CATEGORY_EXISTED(6005, "Vui lòng chọn danh mục cấp thấp nhất", HttpStatus.BAD_REQUEST),
 
     //school
     SCHOOL_NOT_FOUND(7001, "Không tìm thấy trường học",HttpStatus.BAD_REQUEST),

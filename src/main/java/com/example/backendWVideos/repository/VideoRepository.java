@@ -28,6 +28,9 @@ public interface VideoRepository extends JpaRepository<Video, String> {
     
     Long countByUserIdAndStatus(String userId, VideoStatus status);
     
+    // Thêm method đếm video theo status cho dashboard
+    Long countByStatus(VideoStatus status);
+    
     /**
      * Tăng lượt xem video một cách atomic để tối ưu performance
      */

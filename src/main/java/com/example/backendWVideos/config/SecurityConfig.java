@@ -46,7 +46,8 @@ public class SecurityConfig {
         "/users/confirm",
         "/users/confirm/**",
         "/videos/public",  // Public videos
-        "/videos/*/view"   // Increment views
+        "/videos/*/view",   // Increment views
+        "/categories"      // Public categories
     };
 
     private final String[] PUBLIC_ENDPOINTS_ALL = {

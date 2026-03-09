@@ -73,6 +73,11 @@ public class Video {
     @Column(name = "is_public")
     private Boolean isPublic = true;
     
+    // Thể loại video (có thể null)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "category_id")
+    private Category category;
+    
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
