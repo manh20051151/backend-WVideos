@@ -55,10 +55,10 @@ public class VideoService {
         User user = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
 
-        // Lấy categories nếu có (yêu cầu ít nhất 3 categories)
+        // Lấy categories nếu có (yêu cầu ít nhất 1, tối đa 10 categories)
         java.util.Set<com.example.backendWVideos.entity.Category> categories = new java.util.HashSet<>();
         if (request.getCategoryIds() != null && !request.getCategoryIds().isEmpty()) {
-            if (request.getCategoryIds().size() < 3) {
+            if (request.getCategoryIds().size() < 1 || request.getCategoryIds().size() > 10) {
                 throw new AppException(ErrorCode.INVALID_REQUEST);
             }
             
@@ -73,7 +73,7 @@ public class VideoService {
                 }
             }
             
-            if (categories.size() < 3) {
+            if (categories.size() < 1) {
                 throw new AppException(ErrorCode.INVALID_REQUEST);
             }
         } else {
@@ -200,13 +200,13 @@ public class VideoService {
             video.setIsPublic(request.getIsPublic());
         }
         
-        // Cập nhật categories (yêu cầu ít nhất 3 categories)
+        // Cập nhật categories (yêu cầu ít nhất 1, tối đa 10 categories)
         if (request.getCategoryIds() != null) {
             if (request.getCategoryIds().isEmpty()) {
                 throw new AppException(ErrorCode.INVALID_REQUEST);
             }
             
-            if (request.getCategoryIds().size() < 3) {
+            if (request.getCategoryIds().size() < 1 || request.getCategoryIds().size() > 10) {
                 throw new AppException(ErrorCode.INVALID_REQUEST);
             }
             
@@ -222,7 +222,7 @@ public class VideoService {
                 }
             }
             
-            if (categories.size() < 3) {
+            if (categories.size() < 1) {
                 throw new AppException(ErrorCode.INVALID_REQUEST);
             }
             

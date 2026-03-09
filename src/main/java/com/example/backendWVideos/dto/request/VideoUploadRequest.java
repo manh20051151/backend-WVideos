@@ -22,8 +22,8 @@ public class VideoUploadRequest {
     
     private Boolean isPublic = true;
     
-    // Danh sách ID của các thể loại (yêu cầu ít nhất 3)
-    @NotEmpty(message = "Phải chọn ít nhất 3 thể loại")
-    @Size(min = 3, message = "Phải chọn ít nhất 3 thể loại")
+    // Danh sách ID của các thể loại (yêu cầu ít nhất 1, tối đa 10)
+    @NotEmpty(message = "Phải chọn ít nhất 1 thể loại")
+    @Size(min = 1, max = 10, message = "Phải chọn từ 1 đến 10 thể loại")
     private List<String> categoryIds;
 }
