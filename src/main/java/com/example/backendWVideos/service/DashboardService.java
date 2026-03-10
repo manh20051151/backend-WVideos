@@ -11,6 +11,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
@@ -82,35 +83,58 @@ public class DashboardService {
         List<DashboardStatsResponse.DailyStats> stats = new ArrayList<>();
         
         try {
-            // Lấy thống kê 7 ngày gần nhất
-            String sql = """
-                SELECT 
-                    DATE(created_at) as date,
-                    COUNT(CASE WHEN table_name = 'users' THEN 1 END) as new_users,
-                    COUNT(CASE WHEN table_name = 'videos' THEN 1 END) as new_videos,
-                    COALESCE(SUM(CASE WHEN table_name = 'videos' THEN views ELSE 0 END), 0) as total_views
-                FROM (
-                    SELECT created_at, 'users' as table_name, 0 as views FROM users WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
-                    UNION ALL
-                    SELECT created_at, 'videos' as table_name, views FROM videos WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY) AND status != 'DELETED'
-                ) combined
-                GROUP BY DATE(created_at)
-                ORDER BY date DESC
-                LIMIT 7
-                """;
+            // Tính ngày 7 ngày trước trong Java để tránh lỗi INTERVAL syntax
+            LocalDateTime sevenDaysAgo = LocalDateTime.now().minusDays(7);
             
-            List<Map<String, Object>> results = jdbcTemplate.queryForList(sql);
+            String userSql = "SELECT joined_date as created_at FROM users WHERE joined_date >= ?";
+            String videoSql = "SELECT created_at, views FROM videos WHERE created_at >= ? AND status != 'DELETED'";
             
-            for (Map<String, Object> row : results) {
+            // Lấy dữ liệu users
+            List<Map<String, Object>> userResults = jdbcTemplate.queryForList(userSql, sevenDaysAgo);
+            Map<String, Long> usersByDate = new java.util.HashMap<>();
+            for (Map<String, Object> row : userResults) {
+                String date = row.get("created_at").toString().substring(0, 10); // Lấy YYYY-MM-DD
+                usersByDate.put(date, usersByDate.getOrDefault(date, 0L) + 1);
+            }
+            
+            // Lấy dữ liệu videos
+            List<Map<String, Object>> videoResults = jdbcTemplate.queryForList(videoSql, sevenDaysAgo);
+            Map<String, Long> videosByDate = new java.util.HashMap<>();
+            Map<String, Long> viewsByDate = new java.util.HashMap<>();
+            for (Map<String, Object> row : videoResults) {
+                String date = row.get("created_at").toString().substring(0, 10); // Lấy YYYY-MM-DD
+                videosByDate.put(date, videosByDate.getOrDefault(date, 0L) + 1);
+                Long views = ((Number) row.get("views")).longValue();
+                viewsByDate.put(date, viewsByDate.getOrDefault(date, 0L) + views);
+            }
+            
+            // Tạo danh sách 7 ngày gần nhất
+            java.time.LocalDate today = java.time.LocalDate.now();
+            for (int i = 0; i < 7; i++) {
+                java.time.LocalDate date = today.minusDays(i);
+                String dateStr = date.toString();
+                
                 stats.add(DashboardStatsResponse.DailyStats.builder()
-                        .date(row.get("date").toString())
-                        .newUsers(((Number) row.get("new_users")).longValue())
-                        .newVideos(((Number) row.get("new_videos")).longValue())
-                        .totalViews(((Number) row.get("total_views")).longValue())
+                        .date(dateStr)
+                        .newUsers(usersByDate.getOrDefault(dateStr, 0L))
+                        .newVideos(videosByDate.getOrDefault(dateStr, 0L))
+                        .totalViews(viewsByDate.getOrDefault(dateStr, 0L))
                         .build());
             }
+            
         } catch (Exception e) {
             log.error("Lỗi khi lấy thống kê hàng ngày: {}", e.getMessage());
+            // Trả về dữ liệu mặc định nếu lỗi
+            java.time.LocalDate today = java.time.LocalDate.now();
+            for (int i = 0; i < 7; i++) {
+                java.time.LocalDate date = today.minusDays(i);
+                stats.add(DashboardStatsResponse.DailyStats.builder()
+                        .date(date.toString())
+                        .newUsers(0L)
+                        .newVideos(0L)
+                        .totalViews(0L)
+                        .build());
+            }
         }
         
         return stats;
@@ -120,21 +144,20 @@ public class DashboardService {
         List<DashboardStatsResponse.CategoryStats> stats = new ArrayList<>();
         
         try {
-            String sql = """
-                SELECT 
-                    c.id,
-                    c.name,
-                    c.icon,
-                    c.color,
-                    COUNT(v.id) as video_count,
-                    COALESCE(SUM(v.views), 0) as total_views
-                FROM categories c
-                LEFT JOIN videos v ON c.id = v.category_id AND v.status != 'DELETED'
-                WHERE c.is_active = true
-                GROUP BY c.id, c.name, c.icon, c.color
-                ORDER BY video_count DESC, total_views DESC
-                LIMIT 10
-                """;
+            String sql = "SELECT " +
+                    "c.id, " +
+                    "c.name, " +
+                    "c.icon, " +
+                    "c.color, " +
+                    "COUNT(DISTINCT vc.video_id) as video_count, " +
+                    "COALESCE(SUM(v.views), 0) as total_views " +
+                    "FROM categories c " +
+                    "LEFT JOIN video_categories vc ON c.id = vc.category_id " +
+                    "LEFT JOIN videos v ON vc.video_id = v.id AND v.status != 'DELETED' " +
+                    "WHERE c.is_active = true " +
+                    "GROUP BY c.id, c.name, c.icon, c.color " +
+                    "ORDER BY video_count DESC, total_views DESC " +
+                    "LIMIT 10";
             
             List<Map<String, Object>> results = jdbcTemplate.queryForList(sql);
             
@@ -159,33 +182,38 @@ public class DashboardService {
         List<DashboardStatsResponse.UserStats> stats = new ArrayList<>();
         
         try {
-            String sql = """
-                SELECT 
-                    u.id,
-                    u.username,
-                    u.email,
-                    COUNT(v.id) as video_count,
-                    COALESCE(SUM(v.views), 0) as total_views,
-                    DATE(u.created_at) as join_date
-                FROM users u
-                LEFT JOIN videos v ON u.id = v.user_id AND v.status != 'DELETED'
-                GROUP BY u.id, u.username, u.email, u.created_at
-                ORDER BY video_count DESC, total_views DESC
-                LIMIT 10
-                """;
+            // Query đơn giản nhất
+            String sql = "SELECT id, username, email, joined_date FROM users ORDER BY joined_date DESC LIMIT 10";
+            List<Map<String, Object>> userResults = jdbcTemplate.queryForList(sql);
             
-            List<Map<String, Object>> results = jdbcTemplate.queryForList(sql);
-            
-            for (Map<String, Object> row : results) {
+            for (Map<String, Object> row : userResults) {
+                String userId = (String) row.get("id");
+                
+                // Đếm video của từng user riêng biệt
+                String videoCountSql = "SELECT COUNT(*) as count FROM videos WHERE user_id = ? AND status != 'DELETED'";
+                Long videoCount = jdbcTemplate.queryForObject(videoCountSql, Long.class, userId);
+                
+                // Tính tổng views của từng user riêng biệt
+                String viewsSql = "SELECT COALESCE(SUM(views), 0) as total_views FROM videos WHERE user_id = ? AND status != 'DELETED'";
+                Long totalViews = jdbcTemplate.queryForObject(viewsSql, Long.class, userId);
+                
                 stats.add(DashboardStatsResponse.UserStats.builder()
-                        .userId((String) row.get("id"))
+                        .userId(userId)
                         .username((String) row.get("username"))
                         .email((String) row.get("email"))
-                        .videoCount(((Number) row.get("video_count")).longValue())
-                        .totalViews(((Number) row.get("total_views")).longValue())
-                        .joinDate(row.get("join_date").toString())
+                        .videoCount(videoCount != null ? videoCount : 0L)
+                        .totalViews(totalViews != null ? totalViews : 0L)
+                        .joinDate(row.get("joined_date").toString().substring(0, 10))
                         .build());
             }
+            
+            // Sắp xếp theo video count và total views
+            stats.sort((a, b) -> {
+                int videoCompare = Long.compare(b.getVideoCount(), a.getVideoCount());
+                if (videoCompare != 0) return videoCompare;
+                return Long.compare(b.getTotalViews(), a.getTotalViews());
+            });
+            
         } catch (Exception e) {
             log.error("Lỗi khi lấy top users: {}", e.getMessage());
         }
