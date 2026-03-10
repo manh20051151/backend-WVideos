@@ -283,9 +283,14 @@ public class AuthenticationService {
         var verified = signedJWT.verify(verifier);
         log.info("[verifyToken] verified={}, expiryTime={}, now={}", verified, expiryTime, new Date());
 
-        if (!(verified && expiryTime.after(new Date()))) {
-            log.warn("[verifyToken] Token không hợp lệ: verified={}, expired={}", verified, !expiryTime.after(new Date()));
+        if (!verified) {
+            log.warn("[verifyToken] Token signature không hợp lệ");
             throw new AppException(ErrorCode.UNAUTHENTICATED);
+        }
+        
+        if (!expiryTime.after(new Date())) {
+            log.warn("[verifyToken] Token đã hết hạn: expiryTime={}, now={}", expiryTime, new Date());
+            throw new AppException(ErrorCode.TOKEN_EXPIRED);
         }
 
         if (invalidatedTokenRepository.existsById(jti)) {
