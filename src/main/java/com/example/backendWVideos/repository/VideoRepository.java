@@ -4,6 +4,7 @@ import com.example.backendWVideos.entity.Video;
 import com.example.backendWVideos.enums.VideoStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -18,8 +19,12 @@ public interface VideoRepository extends JpaRepository<Video, String> {
     
     Optional<Video> findByFileCode(String fileCode);
     
+    // Tối ưu: Fetch categories cùng lúc để tránh N+1
+    @EntityGraph(attributePaths = {"categories"})
     Page<Video> findByUserId(String userId, Pageable pageable);
     
+    // Tối ưu: Fetch categories cùng lúc cho public videos
+    @EntityGraph(attributePaths = {"categories", "user"})
     Page<Video> findByStatusAndIsPublic(VideoStatus status, Boolean isPublic, Pageable pageable);
     
     List<Video> findByUserIdAndStatus(String userId, VideoStatus status);
