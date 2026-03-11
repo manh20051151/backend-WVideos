@@ -4,6 +4,7 @@ import jakarta.validation.constraints.Size;
 import lombok.*;
 
 import java.util.List;
+import java.util.Set;
 
 @Data
 @Builder
@@ -22,4 +23,8 @@ public class VideoUpdateRequest {
     // Danh sách ID của các thể loại (yêu cầu ít nhất 1, tối đa 10 nếu có)
     @Size(min = 1, max = 10, message = "Phải chọn từ 1 đến 10 thể loại")
     private List<String> categoryIds;
+    
+    // Tags cho video (tối đa 10 tags)
+    @Size(max = 10, message = "Tối đa 10 tags")
+    private Set<String> tags;
 }

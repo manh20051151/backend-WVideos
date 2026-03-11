@@ -8,6 +8,7 @@ import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 @Entity
@@ -83,6 +84,12 @@ public class Video {
         inverseJoinColumns = @JoinColumn(name = "category_id")
     )
     private Set<Category> categories = new HashSet<>();
+    
+    // Tags cho video
+    @ElementCollection
+    @CollectionTable(name = "video_tags", joinColumns = @JoinColumn(name = "video_id"))
+    @Column(name = "tag")
+    private Set<String> tags = new HashSet<>();
     
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)

@@ -19,12 +19,16 @@ public interface VideoRepository extends JpaRepository<Video, String> {
     
     Optional<Video> findByFileCode(String fileCode);
     
-    // Tối ưu: Fetch categories cùng lúc để tránh N+1
-    @EntityGraph(attributePaths = {"categories"})
+    // Tối ưu: Fetch categories và tags cùng lúc cho findById
+    @EntityGraph(attributePaths = {"categories", "user", "tags"})
+    Optional<Video> findById(String id);
+    
+    // Tối ưu: Fetch categories và tags cùng lúc để tránh N+1
+    @EntityGraph(attributePaths = {"categories", "tags"})
     Page<Video> findByUserId(String userId, Pageable pageable);
     
-    // Tối ưu: Fetch categories cùng lúc cho public videos
-    @EntityGraph(attributePaths = {"categories", "user"})
+    // Tối ưu: Fetch categories, user và tags cùng lúc cho public videos
+    @EntityGraph(attributePaths = {"categories", "user", "tags"})
     Page<Video> findByStatusAndIsPublic(VideoStatus status, Boolean isPublic, Pageable pageable);
     
     List<Video> findByUserIdAndStatus(String userId, VideoStatus status);

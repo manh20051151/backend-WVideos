@@ -88,6 +88,7 @@ public class VideoService {
                 .status(VideoStatus.UPLOADING)
                 .user(user)
                 .categories(categories)
+                .tags(request.getTags() != null ? request.getTags() : new java.util.HashSet<>())
                 .build();
 
         video = videoRepository.save(video);
@@ -108,6 +109,14 @@ public class VideoService {
             video.setProtectedDownloadUrl(uploadResult.getProtectedDl());
             video.setThumbnailUrl(uploadResult.getSingleImg());
             video.setSplashImageUrl(uploadResult.getSplashImg());
+            
+            // Thay thế domain img.doodcdn.io bằng thumbcdn.com
+            if (video.getThumbnailUrl() != null) {
+                video.setThumbnailUrl(video.getThumbnailUrl().replace("img.doodcdn.io", "thumbcdn.com"));
+            }
+            if (video.getSplashImageUrl() != null) {
+                video.setSplashImageUrl(video.getSplashImageUrl().replace("img.doodcdn.io", "thumbcdn.com"));
+            }
             
             // Parse size và duration
             if (uploadResult.getSize() != null) {
@@ -354,11 +363,17 @@ public class VideoService {
                     
                     // Cập nhật thumbnails nếu có
                     if (result.get("single_img") != null) {
-                        video.setThumbnailUrl(result.get("single_img").toString());
+                        String thumbnailUrl = result.get("single_img").toString();
+                        // Thay thế domain img.doodcdn.io bằng thumbcdn.com
+                        thumbnailUrl = thumbnailUrl.replace("img.doodcdn.io", "thumbcdn.com");
+                        video.setThumbnailUrl(thumbnailUrl);
                     }
                     
                     if (result.get("splash_img") != null) {
-                        video.setSplashImageUrl(result.get("splash_img").toString());
+                        String splashUrl = result.get("splash_img").toString();
+                        // Thay thế domain img.doodcdn.io bằng thumbcdn.com
+                        splashUrl = splashUrl.replace("img.doodcdn.io", "thumbcdn.com");
+                        video.setSplashImageUrl(splashUrl);
                     }
                     
                     // Cập nhật timestamp sync

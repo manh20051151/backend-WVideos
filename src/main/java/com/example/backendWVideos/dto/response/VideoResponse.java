@@ -5,6 +5,7 @@ import lombok.*;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Set;
 
 @Data
 @Builder
@@ -27,7 +28,8 @@ public class VideoResponse {
     private Long views;
     private VideoStatus status;
     private Boolean isPublic;
-    private List<CategoryResponse> categories; // Đổi từ CategoryResponse sang List<CategoryResponse>
+    private List<CategoryResponse> categories;
+    private Set<String> tags;
     private String userId;
     private String username;
     private LocalDateTime createdAt;

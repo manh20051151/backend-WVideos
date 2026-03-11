@@ -6,6 +6,7 @@ import com.example.backendWVideos.entity.Video;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Component
@@ -36,6 +37,7 @@ public class VideoMapper {
                 .status(video.getStatus())
                 .isPublic(video.getIsPublic())
                 .categories(mapCategoriesToResponse(video.getCategories()))
+                .tags(video.getTags())
                 .userId(video.getUser() != null ? video.getUser().getId() : null)
                 .username(video.getUser() != null ? video.getUser().getUsername() : null)
                 .createdAt(video.getCreatedAt())
