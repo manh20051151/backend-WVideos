@@ -47,6 +47,7 @@ public class SecurityConfig {
         "/users/confirm/**",
         "/videos/public",  // Public videos
         "/videos/*/view",   // Increment views
+        "/videos/*/stream-url",  // Stream URL proxy
         "/categories"      // Public categories
     };
 

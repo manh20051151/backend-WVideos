@@ -15,10 +15,14 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
-import org.springframework.http.MediaType;
+import org.springframework.http.*;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
+
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @RestController
 @RequestMapping("/videos")
@@ -28,6 +32,7 @@ import org.springframework.web.multipart.MultipartFile;
 public class VideoController {
 
     private final VideoService videoService;
+    private final RestTemplate restTemplate = new RestTemplate();
 
     @Operation(summary = "Upload video", description = "Upload video lên DoodStream")
     @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -170,5 +175,81 @@ public class VideoController {
         return ApiResponse.<VideoResponse>builder()
                 .result(response)
                 .build();
+    }
+
+    @Operation(summary = "Get direct video URL from DoodStream", description = "Lấy direct video URL để tránh CORS ở frontend")
+    @GetMapping("/{fileCode}/stream-url")
+    public ApiResponse<String> getVideoStreamUrl(@PathVariable String fileCode) {
+        log.info("🎬 Đang lấy video URL cho fileCode: {}", fileCode);
+        
+        try {
+            // Bước 1: Lấy trang embed để tìm pass_md5 URL
+            String embedUrl = "https://dood.to/e/" + fileCode;
+            HttpHeaders headers = new HttpHeaders();
+            headers.set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36");
+            HttpEntity<String> entity = new HttpEntity<>(headers);
+            
+            ResponseEntity<String> embedResponse = restTemplate.exchange(
+                embedUrl, HttpMethod.GET, entity, String.class);
+            String html = embedResponse.getBody();
+            
+            if (html == null) {
+                return ApiResponse.<String>builder()
+                        .message("Không thể lấy trang embed")
+                        .build();
+            }
+            
+            // Parse pass_md5 URL từ HTML
+            Pattern passMd5Pattern = Pattern.compile("/pass_md5/([^'\"]+)");
+            Matcher passMd5Matcher = passMd5Pattern.matcher(html);
+            
+            String baseVideoUrl = null;
+            if (passMd5Matcher.find()) {
+                String passMd5Path = passMd5Matcher.group(1);
+                String passMd5Url = "https://dood.to/pass_md5/" + passMd5Path;
+                
+                log.info("🔑 Gọi pass_md5 URL: {}", passMd5Url);
+                
+                // Bước 2: Gọi pass_md5 endpoint để lấy base URL
+                ResponseEntity<String> passMd5Response = restTemplate.exchange(
+                    passMd5Url, HttpMethod.GET, entity, String.class);
+                baseVideoUrl = passMd5Response.getBody();
+                
+                log.info("📹 Base URL nhận được: {}", baseVideoUrl != null ? baseVideoUrl.substring(0, Math.min(50, baseVideoUrl.length())) + "..." : "null");
+            }
+            
+            if (baseVideoUrl == null || baseVideoUrl.isEmpty() || baseVideoUrl.equals("RELOAD")) {
+                return ApiResponse.<String>builder()
+                        .message("Không thể lấy video URL từ DoodStream")
+                        .build();
+            }
+            
+            // Bước 3: Generate token và tạo final URL
+            String token = generateRandomToken(10);
+            String expiry = String.valueOf(System.currentTimeMillis());
+            String finalVideoUrl = baseVideoUrl + token + "?token=" + token + "&expiry=" + expiry;
+            
+            log.info("✅ Final video URL: {}", finalVideoUrl.substring(0, Math.min(50, finalVideoUrl.length())) + "...");
+            
+            return ApiResponse.<String>builder()
+                    .result(finalVideoUrl)
+                    .build();
+                    
+        } catch (Exception e) {
+            log.error("❌ Lỗi khi lấy video URL: {}", e.getMessage(), e);
+            return ApiResponse.<String>builder()
+                    .message("Lỗi: " + e.getMessage())
+                    .build();
+        }
+    }
+    
+    private String generateRandomToken(int length) {
+        String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+        StringBuilder sb = new StringBuilder();
+        java.util.Random random = new java.util.Random();
+        for (int i = 0; i < length; i++) {
+            sb.append(chars.charAt(random.nextInt(chars.length())));
+        }
+        return sb.toString();
     }
 }
