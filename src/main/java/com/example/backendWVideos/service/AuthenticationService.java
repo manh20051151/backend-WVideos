@@ -61,7 +61,13 @@ public class AuthenticationService {
         try {
             verifyToken(token, false);
         } catch (AppException e) {
-            isValid = false;
+            // Token expired vẫn được coi là hợp lệ về mặt signature, chỉ hết hạn thời gian
+            // Để Spring Security xử lý token expired
+            if (e.getErrorCode() == ErrorCode.TOKEN_EXPIRED) {
+                isValid = true; // Token expired vẫn hợp lệ về mặt signature
+            } else {
+                isValid = false; // Các lỗi khác (signature invalid, token invalidated, etc.)
+            }
         }
         return IntrospectResponse.builder()
                 .valid(isValid)
