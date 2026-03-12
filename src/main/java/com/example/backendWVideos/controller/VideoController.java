@@ -16,6 +16,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.*;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
@@ -51,7 +52,7 @@ public class VideoController {
                 .build();
     }
 
-    @Operation(summary = "Get my videos", description = "Lấy danh sách video của tôi")
+    @Operation(summary = "Get my videos", description = "Lấy danh sách video của tôi (không bao gồm đã xóa)")
     @GetMapping("/my-videos")
     public ApiResponse<Page<VideoResponse>> getMyVideos(
             @RequestParam(defaultValue = "0") int page,
@@ -71,6 +72,44 @@ public class VideoController {
         
         return ApiResponse.<Page<VideoResponse>>builder()
                 .result(videos)
+                .build();
+    }
+    
+    @Operation(summary = "Get deleted videos", description = "Lấy danh sách video đã xóa (thùng rác) - Chỉ Admin")
+    @GetMapping("/deleted")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<Page<VideoResponse>> getDeletedVideos(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "createdAt") String sortBy,
+            @RequestParam(defaultValue = "DESC") String sortDir
+    ) {
+        String userEmail = SecurityContextHolder.getContext().getAuthentication().getName();
+        
+        Sort sort = sortDir.equalsIgnoreCase("ASC") 
+            ? Sort.by(sortBy).ascending() 
+            : Sort.by(sortBy).descending();
+        
+        Pageable pageable = PageRequest.of(page, size, sort);
+        
+        Page<VideoResponse> videos = videoService.getDeletedVideos(userEmail, pageable);
+        
+        return ApiResponse.<Page<VideoResponse>>builder()
+                .result(videos)
+                .build();
+    }
+    
+    @Operation(summary = "Restore video", description = "Khôi phục video đã xóa - Chỉ Admin")
+    @PostMapping("/{videoId}/restore")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<VideoResponse> restoreVideo(@PathVariable String videoId) {
+        String userEmail = SecurityContextHolder.getContext().getAuthentication().getName();
+        
+        VideoResponse video = videoService.restoreVideo(userEmail, videoId);
+        
+        return ApiResponse.<VideoResponse>builder()
+                .result(video)
+                .message("Khôi phục video thành công")
                 .build();
     }
 

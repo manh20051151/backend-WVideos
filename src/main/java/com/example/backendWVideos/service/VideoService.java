@@ -146,19 +146,60 @@ public class VideoService {
     }
 
     /**
-     * Lấy danh sách video của user với thông tin realtime từ DoodStream
+     * Lấy danh sách video của user (không bao gồm DELETED)
      */
     @Transactional
     public Page<VideoResponse> getMyVideos(String userEmail, Pageable pageable) {
-        // Lấy user bằng email
         User user = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
         
-        Page<Video> videos = videoRepository.findByUserId(user.getId(), pageable);
+        Page<Video> videos = videoRepository.findByUserIdAndStatusNot(user.getId(), VideoStatus.DELETED, pageable);
         
         log.info("📋 Found {} videos for user {}", videos.getTotalElements(), userEmail);
         
         return videos.map(videoMapper::toVideoResponse);
+    }
+    
+    /**
+     * Lấy danh sách video đã xóa (thùng rác)
+     */
+    @Transactional
+    public Page<VideoResponse> getDeletedVideos(String userEmail, Pageable pageable) {
+        User user = userRepository.findByEmail(userEmail)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+        
+        Page<Video> videos = videoRepository.findByUserIdAndStatus(user.getId(), VideoStatus.DELETED, pageable);
+        
+        log.info("�️ Found {} deleted videos for user {}", videos.getTotalElements(), userEmail);
+        
+        return videos.map(videoMapper::toVideoResponse);
+    }
+    
+    /**
+     * Khôi phục video đã xóa
+     */
+    @Transactional
+    public VideoResponse restoreVideo(String userEmail, String videoId) {
+        User user = userRepository.findByEmail(userEmail)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+        
+        Video video = videoRepository.findById(videoId)
+                .orElseThrow(() -> new AppException(ErrorCode.VIDEO_NOT_FOUND));
+
+        if (!video.getUser().getId().equals(user.getId())) {
+            throw new AppException(ErrorCode.UNAUTHORIZED);
+        }
+
+        if (video.getStatus() != VideoStatus.DELETED) {
+            throw new AppException(ErrorCode.INVALID_REQUEST);
+        }
+
+        video.setStatus(VideoStatus.READY);
+        video = videoRepository.save(video);
+        
+        log.info("♻️ Khôi phục video: {}", videoId);
+        
+        return videoMapper.toVideoResponse(video);
     }
     
     /**

@@ -31,7 +31,11 @@ public interface VideoRepository extends JpaRepository<Video, String> {
     @EntityGraph(attributePaths = {"categories", "user", "tags"})
     Page<Video> findByStatusAndIsPublic(VideoStatus status, Boolean isPublic, Pageable pageable);
     
-    List<Video> findByUserIdAndStatus(String userId, VideoStatus status);
+    @EntityGraph(attributePaths = {"categories", "tags"})
+    Page<Video> findByUserIdAndStatusNot(String userId, VideoStatus status, Pageable pageable);
+    
+    @EntityGraph(attributePaths = {"categories", "tags"})
+    Page<Video> findByUserIdAndStatus(String userId, VideoStatus status, Pageable pageable);
     
     Long countByUserId(String userId);
     
