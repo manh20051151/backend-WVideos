@@ -91,8 +91,8 @@ spring:
 # JWT Configuration
 jwt:
   signerKey: ${env.JWT_SIGNER_KEY:N/qa57r32pqMpmi5PxhHdGMVCI+MgTXPiw83/20xI56B1ij3mMgzpckvznpICkbj}
-  valid-duration: ${env.JWT_VALID_DURATION:3600} # 1 hour in seconds
-  refreshable-duration: ${env.JWT_REFRESHABLE_DURATION:86400} # 24 hours in seconds
+  valid-duration: ${env.JWT_VALID_DURATION:172800} # 2 day in seconds
+  refreshable-duration: ${env.JWT_REFRESHABLE_DURATION:604800} # 7 day in seconds
 
 # Application Configuration
 app:

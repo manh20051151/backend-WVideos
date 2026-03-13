@@ -3,6 +3,7 @@ package com.example.backendWVideos.config;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.example.backendWVideos.dto.request.ApiResponse;
 import com.example.backendWVideos.exception.ErrorCode;
+import io.jsonwebtoken.ExpiredJwtException;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -15,7 +16,16 @@ import java.io.IOException;
 public class JwtAuthenticationEntryPoint implements AuthenticationEntryPoint {
     @Override
     public void commence(HttpServletRequest request, HttpServletResponse response, AuthenticationException authException) throws IOException, ServletException {
-        ErrorCode errorCode = ErrorCode.UNAUTHENTICATED;
+        ErrorCode errorCode;
+        
+        // Kiểm tra message để phân biệt token hết hạn
+        String message = authException.getMessage().toLowerCase();
+        if (message.contains("expired") || message.contains("hết hạn")) {
+            errorCode = ErrorCode.TOKEN_EXPIRED;
+        } else {
+            errorCode = ErrorCode.UNAUTHENTICATED;
+        }
+        
         response.setStatus(errorCode.getStatusCode().value());
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         ApiResponse<?> apiResponse = ApiResponse.builder()

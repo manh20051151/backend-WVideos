@@ -31,7 +31,7 @@ public enum ErrorCode {
 
     // Đăng ký
     INVALID_TOKEN(5001, "Token không hợp lệ", HttpStatus.NOT_FOUND),
-    TOKEN_EXPIRED(5002, "Token đã hết hạn", HttpStatus.NOT_FOUND),
+    TOKEN_EXPIRED(5002, "Token đã hết hạn", HttpStatus.UNAUTHORIZED),
     ALREADY_CONFIRMED(5003, "Tài khoản đã được xác nhận", HttpStatus.NOT_FOUND),
     REGISTRATION_FAILED(5004, "Đăng ký thất bại", HttpStatus.NOT_FOUND),
     CONFIRMATION_FAILED(5005, "Xác nhận đăng ký thất bại", HttpStatus.NOT_FOUND),
