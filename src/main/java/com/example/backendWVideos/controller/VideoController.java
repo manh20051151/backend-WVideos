@@ -3,7 +3,9 @@ package com.example.backendWVideos.controller;
 import com.example.backendWVideos.dto.request.ApiResponse;
 import com.example.backendWVideos.dto.request.VideoUpdateRequest;
 import com.example.backendWVideos.dto.request.VideoUploadRequest;
+import com.example.backendWVideos.dto.request.VideoInitUploadRequest;
 import com.example.backendWVideos.dto.response.VideoResponse;
+import com.example.backendWVideos.dto.response.VideoInitUploadResponse;
 import com.example.backendWVideos.service.VideoService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -35,7 +37,60 @@ public class VideoController {
     private final VideoService videoService;
     private final RestTemplate restTemplate = new RestTemplate();
 
-    @Operation(summary = "Upload video", description = "Upload video lên DoodStream")
+    @Operation(summary = "Init upload", description = "Khởi tạo upload - tạo video record và lấy upload server")
+    @PostMapping("/init-upload")
+    public ApiResponse<VideoInitUploadResponse> initUpload(
+            @RequestBody @Valid VideoInitUploadRequest request
+    ) {
+        String userEmail = SecurityContextHolder.getContext().getAuthentication().getName();
+        
+        log.info("🚀 User {} đang init upload video: {}", userEmail, request.getTitle());
+        
+        VideoInitUploadResponse response = videoService.initUpload(userEmail, request);
+        
+        return ApiResponse.<VideoInitUploadResponse>builder()
+                .result(response)
+                .message("Upload initialized successfully")
+                .build();
+    }
+
+    @Operation(summary = "Complete upload by filename", description = "Hoàn thành upload bằng cách tìm file từ DoodStream dựa trên filename")
+    @PostMapping("/{videoId}/complete-upload-by-filename")
+    public ApiResponse<VideoResponse> completeUploadByFilename(
+            @PathVariable String videoId,
+            @RequestParam String filename
+    ) {
+        String userEmail = SecurityContextHolder.getContext().getAuthentication().getName();
+        
+        log.info("🏁 User {} đang complete upload by filename: {} - filename: {}", userEmail, videoId, filename);
+        
+        VideoResponse response = videoService.completeUploadByFilename(userEmail, videoId, filename);
+        
+        return ApiResponse.<VideoResponse>builder()
+                .result(response)
+                .message("Upload completed successfully")
+                .build();
+    }
+
+    @Operation(summary = "Complete upload", description = "Hoàn thành upload - cập nhật video với fileCode từ DoodStream")
+    @PostMapping("/{videoId}/complete-upload")
+    public ApiResponse<VideoResponse> completeUpload(
+            @PathVariable String videoId,
+            @RequestParam String fileCode
+    ) {
+        String userEmail = SecurityContextHolder.getContext().getAuthentication().getName();
+        
+        log.info("🏁 User {} đang complete upload video: {} - fileCode: {}", userEmail, videoId, fileCode);
+        
+        VideoResponse response = videoService.completeUpload(userEmail, videoId, fileCode);
+        
+        return ApiResponse.<VideoResponse>builder()
+                .result(response)
+                .message("Upload completed successfully")
+                .build();
+    }
+
+    @Operation(summary = "Upload video", description = "Upload video lên DoodStream (legacy)")
     @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ApiResponse<VideoResponse> uploadVideo(
             @RequestPart("file") MultipartFile file,

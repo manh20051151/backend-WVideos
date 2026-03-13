@@ -27,4 +27,7 @@ public class VideoUpdateRequest {
     // Tags cho video (tối đa 10 tags)
     @Size(max = 10, message = "Tối đa 10 tags")
     private Set<String> tags;
+    
+    // URL thumbnail tùy chọn (có thể null để xóa thumbnail)
+    private String thumbnailUrl;
 }

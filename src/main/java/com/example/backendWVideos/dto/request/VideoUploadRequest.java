@@ -31,4 +31,7 @@ public class VideoUploadRequest {
     // Tags cho video (tối đa 10 tags, mỗi tag tối đa 30 ký tự)
     @Size(max = 10, message = "Tối đa 10 tags")
     private Set<String> tags;
+    
+    // URL thumbnail tùy chọn (upload lên imgbb)
+    private String thumbnailUrl;
 }

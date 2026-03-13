@@ -112,6 +112,95 @@ public class DoodStreamService {
                     if (results != null && !results.isEmpty()) {
                         Map<String, Object> result = results.get(0);
                         
+                        log.info("📊 DoodStream result: {}", result);
+                        log.info("🖼️ single_img: {}, splash_img: {}", 
+                            result.get("single_img"), result.get("splash_img"));
+                        
+                        DoodStreamUploadResult uploadResult = DoodStreamUploadResult.builder()
+                            .fileCode((String) result.get("filecode"))
+                            .downloadUrl((String) result.get("download_url"))
+                            .singleImg((String) result.get("single_img"))
+                            .splashImg((String) result.get("splash_img"))
+                            .protectedEmbed((String) result.get("protected_embed"))
+                            .protectedDl((String) result.get("protected_dl"))
+                            .size((String) result.get("size"))
+                            .length((String) result.get("length"))
+                            .uploaded((String) result.get("uploaded"))
+                            .title((String) result.get("title"))
+                            .canPlay((Integer) result.get("canplay"))
+                            .status((Integer) result.get("status"))
+                            .build();
+
+                        log.info("✅ Upload thành công! FileCode: {}", uploadResult.getFileCode());
+                        return uploadResult;
+                    }
+                }
+                
+                log.error("❌ DoodStream trả về status không hợp lệ: {}", responseBody.get("status"));
+            }
+
+            log.error("❌ Response không hợp lệ: status={}, body={}", 
+                response.getStatusCode(), response.getBody());
+            throw new AppException(ErrorCode.UPLOAD_FAILED);
+            
+        } catch (Exception e) {
+            log.error("❌ Lỗi khi upload file: {} - {}", e.getClass().getName(), e.getMessage());
+            e.printStackTrace();
+            throw new AppException(ErrorCode.UPLOAD_FAILED);
+        }
+    }
+
+    /**
+     * Upload file bytes lên DoodStream
+     */
+    public DoodStreamUploadResult uploadFileBytes(byte[] fileBytes, String fileName, String uploadServerUrl) {
+        try {
+            log.info("Đang upload file {} ({} bytes) lên DoodStream...", 
+                fileName, fileBytes.length);
+            log.info("Upload server URL: {}", uploadServerUrl);
+
+            // Tạo request body
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.MULTIPART_FORM_DATA);
+
+            MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+            body.add("api_key", apiKey);
+            
+            // Convert byte[] to ByteArrayResource
+            ByteArrayResource fileResource = new ByteArrayResource(fileBytes) {
+                @Override
+                public String getFilename() {
+                    return fileName;
+                }
+            };
+            body.add("file", fileResource);
+
+            HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
+
+            // Upload file
+            String uploadUrl = uploadServerUrl + "?" + apiKey;
+            log.info("Gửi request upload đến: {}", uploadUrl);
+            
+            long startTime = System.currentTimeMillis();
+            ResponseEntity<Map> response = restTemplate.postForEntity(uploadUrl, requestEntity, Map.class);
+            long endTime = System.currentTimeMillis();
+            
+            log.info("Upload hoàn tất sau {} ms", (endTime - startTime));
+
+            if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
+                Map<String, Object> responseBody = response.getBody();
+                log.info("Response body: {}", responseBody);
+                
+                if ((Integer) responseBody.get("status") == 200) {
+                    List<Map<String, Object>> results = (List<Map<String, Object>>) responseBody.get("result");
+                    
+                    if (results != null && !results.isEmpty()) {
+                        Map<String, Object> result = results.get(0);
+                        
+                        log.info("📊 DoodStream result: {}", result);
+                        log.info("🖼️ single_img: {}, splash_img: {}", 
+                            result.get("single_img"), result.get("splash_img"));
+                        
                         DoodStreamUploadResult uploadResult = DoodStreamUploadResult.builder()
                             .fileCode((String) result.get("filecode"))
                             .downloadUrl((String) result.get("download_url"))

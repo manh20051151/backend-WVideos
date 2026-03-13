@@ -2,8 +2,10 @@ package com.example.backendWVideos.service;
 
 import com.example.backendWVideos.dto.request.VideoUpdateRequest;
 import com.example.backendWVideos.dto.request.VideoUploadRequest;
+import com.example.backendWVideos.dto.request.VideoInitUploadRequest;
 import com.example.backendWVideos.dto.response.DoodStreamUploadResult;
 import com.example.backendWVideos.dto.response.VideoResponse;
+import com.example.backendWVideos.dto.response.VideoInitUploadResponse;
 import com.example.backendWVideos.entity.User;
 import com.example.backendWVideos.entity.Video;
 import com.example.backendWVideos.enums.VideoStatus;
@@ -23,9 +25,13 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.io.File;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import org.springframework.scheduling.annotation.Async;
+import org.springframework.transaction.annotation.Propagation;
 
 @Service
 @RequiredArgsConstructor
@@ -38,47 +44,22 @@ public class VideoService {
     private final VideoMapper videoMapper;
     private final RedisTemplate<String, String> redisTemplate;
     private final CategoryService categoryService;
+    private final VideoUploadAsyncService videoUploadAsyncService;
 
     /**
-     * Upload video lên DoodStream
+     * Init upload - Tạo video record và lấy upload server
      */
     @Transactional
-    public VideoResponse uploadVideo(
-            String userEmail,
-            MultipartFile file,
-            VideoUploadRequest request
-    ) {
-        // Validate file
-        validateVideoFile(file);
+    public VideoInitUploadResponse initUpload(String userEmail, VideoInitUploadRequest request) {
+        log.info("🚀 === INIT UPLOAD === Bắt đầu init upload cho user: {}", userEmail);
 
-        // Lấy user bằng email (vì JWT subject là email)
+        // Lấy user
         User user = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+        log.info("✅ User found: {}", user.getId());
 
-        // Lấy categories nếu có (yêu cầu ít nhất 1, tối đa 10 categories)
-        java.util.Set<com.example.backendWVideos.entity.Category> categories = new java.util.HashSet<>();
-        if (request.getCategoryIds() != null && !request.getCategoryIds().isEmpty()) {
-            if (request.getCategoryIds().size() < 1 || request.getCategoryIds().size() > 10) {
-                throw new AppException(ErrorCode.INVALID_REQUEST);
-            }
-            
-            for (String categoryId : request.getCategoryIds()) {
-                try {
-                    categoryService.getCategoryById(categoryId);
-                    com.example.backendWVideos.entity.Category category = new com.example.backendWVideos.entity.Category();
-                    category.setId(categoryId);
-                    categories.add(category);
-                } catch (Exception e) {
-                    log.warn("⚠️ Category không tồn tại: {}", categoryId);
-                }
-            }
-            
-            if (categories.size() < 1) {
-                throw new AppException(ErrorCode.INVALID_REQUEST);
-            }
-        } else {
-            throw new AppException(ErrorCode.INVALID_REQUEST);
-        }
+        // Xử lý categories
+        java.util.Set<com.example.backendWVideos.entity.Category> categories = processCategories(request.getCategoryIds());
 
         // Tạo video record với status UPLOADING
         Video video = Video.builder()
@@ -89,60 +70,305 @@ public class VideoService {
                 .user(user)
                 .categories(categories)
                 .tags(request.getTags() != null ? request.getTags() : new java.util.HashSet<>())
+                .thumbnailUrl(request.getThumbnailUrl())
                 .build();
 
         video = videoRepository.save(video);
         log.info("📹 Tạo video record: {}", video.getId());
 
-        try {
-            // Lấy upload server
-            String uploadServerUrl = doodStreamService.getUploadServer();
+        // Lấy upload server từ DoodStream
+        String uploadServerUrl = doodStreamService.getUploadServer();
+        log.info("🌐 Upload server: {}", uploadServerUrl);
 
-            // Upload file
-            DoodStreamUploadResult uploadResult = doodStreamService.uploadFile(file, uploadServerUrl);
+        // Tạo upload token (simple implementation)
+        String uploadToken = java.util.UUID.randomUUID().toString();
 
-            // Cập nhật video với thông tin từ DoodStream
-            video.setFileCode(uploadResult.getFileCode());
-            video.setDownloadUrl(uploadResult.getDownloadUrl());
-            video.setEmbedUrl("https://dood.to/e/" + uploadResult.getFileCode());
-            video.setProtectedEmbedUrl(uploadResult.getProtectedEmbed());
-            video.setProtectedDownloadUrl(uploadResult.getProtectedDl());
-            video.setThumbnailUrl(uploadResult.getSingleImg());
-            video.setSplashImageUrl(uploadResult.getSplashImg());
-            
-            // Thay thế domain img.doodcdn.io bằng thumbcdn.com
-            if (video.getThumbnailUrl() != null) {
-                video.setThumbnailUrl(video.getThumbnailUrl().replace("img.doodcdn.io", "thumbcdn.com"));
-            }
-            if (video.getSplashImageUrl() != null) {
-                video.setSplashImageUrl(video.getSplashImageUrl().replace("img.doodcdn.io", "thumbcdn.com"));
-            }
-            
-            // Parse size và duration
-            if (uploadResult.getSize() != null) {
-                video.setFileSize(Long.parseLong(uploadResult.getSize()));
-            }
-            if (uploadResult.getLength() != null) {
-                video.setDuration(Long.parseLong(uploadResult.getLength()));
-            }
+        VideoInitUploadResponse response = new VideoInitUploadResponse();
+        response.setVideoId(video.getId());
+        response.setUploadServerUrl(uploadServerUrl);
+        response.setUploadToken(uploadToken);
+        response.setStatus("READY");
 
-            // Cập nhật status
-            video.setStatus(uploadResult.getCanPlay() == 1 ? VideoStatus.READY : VideoStatus.PROCESSING);
-            video.setUploadedToDoodStreamAt(LocalDateTime.now());
+        log.info("✅ === INIT TRẢ VỀ === videoId: {}, uploadServer: {}", video.getId(), uploadServerUrl);
+        return response;
+    }
 
-            video = videoRepository.save(video);
-            log.info("✅ Upload video thành công! ID: {}, FileCode: {}", video.getId(), video.getFileCode());
+    /**
+     * Complete upload - Cập nhật video với fileCode từ DoodStream
+     */
+    @Transactional
+    public VideoResponse completeUpload(String userEmail, String videoId, String fileCode) {
+        log.info("🏁 === COMPLETE UPLOAD === videoId: {}, fileCode: {}", videoId, fileCode);
 
-            return videoMapper.toVideoResponse(video);
+        // Lấy user
+        User user = userRepository.findByEmail(userEmail)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
 
-        } catch (Exception e) {
-            // Nếu upload thất bại, cập nhật status
-            video.setStatus(VideoStatus.FAILED);
-            videoRepository.save(video);
-            
-            log.error("❌ Upload video thất bại: {}", e.getMessage());
-            throw e;
+        // Lấy video
+        Video video = videoRepository.findById(videoId)
+                .orElseThrow(() -> new AppException(ErrorCode.VIDEO_NOT_FOUND));
+
+        // Kiểm tra quyền sở hữu
+        if (!video.getUser().getId().equals(user.getId())) {
+            throw new AppException(ErrorCode.UNAUTHORIZED);
         }
+
+        // Lấy thông tin file từ DoodStream
+        Map<String, Object> fileInfo = doodStreamService.getFileInfo(fileCode);
+        
+        if (fileInfo != null && fileInfo.get("result") != null) {
+            List<Map<String, Object>> results = (List<Map<String, Object>>) fileInfo.get("result");
+            
+            if (!results.isEmpty()) {
+                Map<String, Object> result = results.get(0);
+                
+                // Cập nhật thông tin video
+                video.setFileCode(fileCode);
+                video.setDownloadUrl(result.get("download_url") != null ? result.get("download_url").toString() : "https://dood.to/d/" + fileCode);
+                video.setEmbedUrl("https://dood.to/e/" + fileCode);
+                
+                if (result.get("protected_dl") != null) {
+                    video.setProtectedDownloadUrl(result.get("protected_dl").toString());
+                }
+                if (result.get("protected_embed") != null) {
+                    video.setProtectedEmbedUrl(result.get("protected_embed").toString());
+                }
+                
+                // Xử lý thumbnail
+                if (video.getThumbnailUrl() == null || video.getThumbnailUrl().isEmpty()) {
+                    if (result.get("single_img") != null) {
+                        String thumbnailUrl = result.get("single_img").toString();
+                        video.setThumbnailUrl(thumbnailUrl.replace("img.doodcdn.io", "thumbcdn.com"));
+                    }
+                }
+                
+                // Splash image
+                if (result.get("splash_img") != null) {
+                    String splashUrl = result.get("splash_img").toString();
+                    video.setSplashImageUrl(splashUrl.replace("img.doodcdn.io", "thumbcdn.com"));
+                }
+                
+                // Metadata
+                if (result.get("size") != null) {
+                    video.setFileSize(Long.parseLong(result.get("size").toString()));
+                }
+                if (result.get("length") != null) {
+                    video.setDuration(Long.parseLong(result.get("length").toString()));
+                }
+                
+                // Status
+                if (result.get("canplay") != null) {
+                    int canPlay = Integer.parseInt(result.get("canplay").toString());
+                    video.setStatus(canPlay == 1 ? VideoStatus.READY : VideoStatus.PROCESSING);
+                }
+                
+                video.setUploadedToDoodStreamAt(LocalDateTime.now());
+                
+                video = videoRepository.save(video);
+                log.info("✅ Complete upload thành công: {}", videoId);
+            }
+        }
+
+        return videoMapper.toVideoResponse(video);
+    }
+
+    /**
+     * Complete upload by filename - Tìm file từ DoodStream dựa trên filename sau khi upload trực tiếp
+     */
+    @Transactional
+    public VideoResponse completeUploadByFilename(String userEmail, String videoId, String filename) {
+        log.info("🏁 === COMPLETE UPLOAD BY FILENAME === videoId: {}, filename: {}", videoId, filename);
+
+        // Lấy user
+        User user = userRepository.findByEmail(userEmail)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+
+        // Lấy video
+        Video video = videoRepository.findById(videoId)
+                .orElseThrow(() -> new AppException(ErrorCode.VIDEO_NOT_FOUND));
+
+        // Kiểm tra quyền sở hữu
+        if (!video.getUser().getId().equals(user.getId())) {
+            throw new AppException(ErrorCode.UNAUTHORIZED);
+        }
+
+        // Lấy danh sách file từ DoodStream
+        Map<String, Object> fileList = doodStreamService.getFileList();
+        
+        if (fileList != null && fileList.get("result") != null) {
+            Map<String, Object> listResult = (Map<String, Object>) fileList.get("result");
+            List<Map<String, Object>> files = (List<Map<String, Object>>) listResult.get("files");
+            
+            // Tìm file vừa upload (dựa trên title/filename và thời gian gần nhất)
+            String searchTitle = video.getTitle();
+            Map<String, Object> foundFile = files.stream()
+                    .filter(f -> {
+                        String fileTitle = f.get("title") != null ? f.get("title").toString() : "";
+                        String fileName = f.get("name") != null ? f.get("name").toString() : "";
+                        return fileTitle.equalsIgnoreCase(searchTitle) || 
+                               fileName.contains(filename) ||
+                               filename.contains(fileName);
+                    })
+                    .findFirst()
+                    .orElse(null);
+            
+            if (foundFile != null) {
+                String fileCode = foundFile.get("file_code").toString();
+                log.info("✅ Tìm thấy file trên DoodStream: fileCode={}", fileCode);
+                
+                // Cập nhật thông tin video
+                video.setFileCode(fileCode);
+                video.setDownloadUrl(foundFile.get("download_url") != null ? 
+                    foundFile.get("download_url").toString() : "https://dood.to/d/" + fileCode);
+                video.setEmbedUrl("https://dood.to/e/" + fileCode);
+                
+                if (foundFile.get("protected_dl") != null) {
+                    video.setProtectedDownloadUrl(foundFile.get("protected_dl").toString());
+                }
+                if (foundFile.get("protected_embed") != null) {
+                    video.setProtectedEmbedUrl(foundFile.get("protected_embed").toString());
+                }
+                
+                // Xử lý thumbnail
+                if (video.getThumbnailUrl() == null || video.getThumbnailUrl().isEmpty()) {
+                    if (foundFile.get("single_img") != null) {
+                        String thumbnailUrl = foundFile.get("single_img").toString();
+                        video.setThumbnailUrl(thumbnailUrl.replace("img.doodcdn.io", "thumbcdn.com"));
+                    }
+                }
+                
+                // Splash image
+                if (foundFile.get("splash_img") != null) {
+                    String splashUrl = foundFile.get("splash_img").toString();
+                    video.setSplashImageUrl(splashUrl.replace("img.doodcdn.io", "thumbcdn.com"));
+                }
+                
+                // Metadata
+                if (foundFile.get("size") != null) {
+                    video.setFileSize(Long.parseLong(foundFile.get("size").toString()));
+                }
+                if (foundFile.get("length") != null) {
+                    video.setDuration(Long.parseLong(foundFile.get("length").toString()));
+                }
+                
+                // Status
+                if (foundFile.get("canplay") != null) {
+                    int canPlay = Integer.parseInt(foundFile.get("canplay").toString());
+                    video.setStatus(canPlay == 1 ? VideoStatus.READY : VideoStatus.PROCESSING);
+                }
+                
+                video.setUploadedToDoodStreamAt(LocalDateTime.now());
+                
+                video = videoRepository.save(video);
+                log.info("✅ Complete upload by filename thành công: {}, fileCode: {}", videoId, fileCode);
+            } else {
+                log.warn("⚠️ Không tìm thấy file trên DoodStream với title: {}", searchTitle);
+                // Vẫn trả về video nhưng status vẫn là UPLOADING
+            }
+        }
+
+        return videoMapper.toVideoResponse(video);
+    }
+
+    /**
+     * Upload video - Tạo record ngay, upload DoodStream async
+     */
+    @Transactional
+    public VideoResponse uploadVideo(
+            String userEmail,
+            MultipartFile file,
+            VideoUploadRequest request
+    ) {
+        long startTime = System.currentTimeMillis();
+        log.info("🚀 === ASYNC UPLOAD === Bắt đầu upload video cho user: {}", userEmail);
+        
+        // Validate file
+        validateVideoFile(file);
+        log.info("✅ File validation passed");
+
+        // Lấy user
+        User user = userRepository.findByEmail(userEmail)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+        log.info("✅ User found: {}", user.getId());
+
+        // Xử lý categories
+        java.util.Set<com.example.backendWVideos.entity.Category> categories = processCategories(request.getCategoryIds());
+
+        // Tạo video record với status UPLOADING
+        Video video = Video.builder()
+                .title(request.getTitle())
+                .description(request.getDescription())
+                .isPublic(request.getIsPublic())
+                .status(VideoStatus.UPLOADING)
+                .user(user)
+                .categories(categories)
+                .tags(request.getTags() != null ? request.getTags() : new java.util.HashSet<>())
+                .thumbnailUrl(request.getThumbnailUrl()) // Lưu thumbnail nếu có
+                .build();
+
+        video = videoRepository.save(video);
+        long endTime = System.currentTimeMillis();
+        log.info("📹 Tạo video record: {} sau {}ms - Bắt đầu async upload", video.getId(), (endTime - startTime));
+
+        // Lưu file tạm trên disk để async method đọc (tránh giữ bytes trong memory)
+        String tempFilePath = System.getProperty("java.io.tmpdir") + "/wvideos-uploads/" + video.getId() + "_" + file.getOriginalFilename();
+        try {
+            File tempDir = new File(System.getProperty("java.io.tmpdir") + "/wvideos-uploads/");
+            if (!tempDir.exists()) {
+                tempDir.mkdirs();
+            }
+            file.transferTo(new File(tempFilePath));
+            log.info("📦 Đã lưu file tạm: {} ({} bytes)", tempFilePath, file.getSize());
+        } catch (Exception e) {
+            log.error("❌ Lỗi khi lưu file tạm: {}", e.getMessage());
+            throw new AppException(ErrorCode.UPLOAD_FAILED);
+        }
+
+        // Flush để commit transaction ngay lập tức, đảm bảo async method tìm thấy video
+        videoRepository.flush();
+
+        // Trigger async upload lên DoodStream - truyền file path thay vì bytes
+        videoUploadAsyncService.uploadToDoodStreamAsync(video.getId(), tempFilePath, file.getOriginalFilename(), request.getThumbnailUrl());
+
+        log.info("✅ === TRẢ VỀ NGAY === sau {}ms", (System.currentTimeMillis() - startTime));
+        // Trả về ngay lập tức, không đợi upload DoodStream
+        return videoMapper.toVideoResponse(video);
+    }
+    
+    /**
+     * Xử lý categories
+     */
+    private java.util.Set<com.example.backendWVideos.entity.Category> processCategories(java.util.List<String> categoryIds) {
+        java.util.Set<com.example.backendWVideos.entity.Category> categories = new java.util.HashSet<>();
+        
+        if (categoryIds == null || categoryIds.isEmpty()) {
+            throw new AppException(ErrorCode.INVALID_REQUEST);
+        }
+        
+        if (categoryIds.size() < 1 || categoryIds.size() > 10) {
+            throw new AppException(ErrorCode.INVALID_REQUEST);
+        }
+        
+        log.info("🔄 Đang xử lý {} categories", categoryIds.size());
+        
+        for (String categoryId : categoryIds) {
+            try {
+                categoryService.getCategoryById(categoryId);
+                com.example.backendWVideos.entity.Category category = new com.example.backendWVideos.entity.Category();
+                category.setId(categoryId);
+                categories.add(category);
+                log.info("✅ Category {} hợp lệ", categoryId);
+            } catch (Exception e) {
+                log.warn("⚠️ Category không tồn tại: {}", categoryId);
+            }
+        }
+        
+        if (categories.size() < 1) {
+            throw new AppException(ErrorCode.INVALID_REQUEST);
+        }
+        
+        log.info("✅ Đã xử lý xong {} categories", categories.size());
+        return categories;
     }
 
     /**
@@ -277,6 +503,12 @@ public class VideoService {
             }
             
             video.setCategories(categories);
+        }
+        
+        // Cập nhật thumbnail nếu có
+        if (request.getThumbnailUrl() != null) {
+            video.setThumbnailUrl(request.getThumbnailUrl());
+            log.info("🖼️ Cập nhật thumbnail cho video: {}", videoId);
         }
 
         video = videoRepository.save(video);
