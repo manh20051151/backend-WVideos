@@ -39,8 +39,8 @@ public class CategoryService {
             // Tìm kiếm theo tên, slug hoặc người tạo
             categories = categoryRepository.findBySearchQuery(search.trim(), pageable);
         } else {
-            // Lấy tất cả
-            categories = categoryRepository.findAll(pageable);
+            // Lấy tất cả với fetch createdBy
+            categories = categoryRepository.findAllWithCreatedBy(pageable);
         }
         
         return categories.map(this::mapToResponse);
