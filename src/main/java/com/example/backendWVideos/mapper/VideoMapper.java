@@ -34,6 +34,8 @@ public class VideoMapper {
                 .fileSize(video.getFileSize())
                 .duration(video.getDuration())
                 .views(video.getViews())
+                .favoritesCount(video.getFavoritesCount())
+                .commentsCount(video.getCommentsCount())
                 .status(video.getStatus())
                 .isPublic(video.getIsPublic())
                 .categories(mapCategoriesToResponse(video.getCategories()))

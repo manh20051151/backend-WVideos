@@ -173,16 +173,11 @@ public class VideoController {
     public ApiResponse<Page<VideoResponse>> getPublicVideos(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
-            @RequestParam(defaultValue = "createdAt") String sortBy,
-            @RequestParam(defaultValue = "DESC") String sortDir
+            @RequestParam(defaultValue = "newest") String sort
     ) {
-        Sort sort = sortDir.equalsIgnoreCase("ASC") 
-            ? Sort.by(sortBy).ascending() 
-            : Sort.by(sortBy).descending();
+        Pageable pageable = PageRequest.of(page, size);
         
-        Pageable pageable = PageRequest.of(page, size, sort);
-        
-        Page<VideoResponse> videos = videoService.getPublicVideos(pageable);
+        Page<VideoResponse> videos = videoService.getPublicVideos(pageable, sort);
         
         return ApiResponse.<Page<VideoResponse>>builder()
                 .result(videos)

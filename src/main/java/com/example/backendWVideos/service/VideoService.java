@@ -17,7 +17,9 @@ import com.example.backendWVideos.repository.VideoRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -429,12 +431,34 @@ public class VideoService {
     }
     
     /**
-     * Lấy danh sách video public
+     * Lấy danh sách video public với sort type - sử dụng native query để tối ưu performance
      */
     @Transactional(readOnly = true)
-    public Page<VideoResponse> getPublicVideos(Pageable pageable) {
-        return videoRepository.findByStatusAndIsPublic(VideoStatus.READY, true, pageable)
-                .map(videoMapper::toVideoResponse);
+    public Page<VideoResponse> getPublicVideos(Pageable pageable, String sortType) {
+        String sort = sortType != null ? sortType : "newest";
+        Pageable newPageable = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize());
+        
+        Page<Video> videos;
+        switch (sort) {
+            case "popular":
+                videos = videoRepository.findPublicVideosByViews(newPageable);
+                break;
+            case "favorites":
+                videos = videoRepository.findPublicVideosByFavorites(newPageable);
+                break;
+            case "comments":
+                videos = videoRepository.findPublicVideosByComments(newPageable);
+                break;
+            case "longest":
+                videos = videoRepository.findPublicVideosByDuration(newPageable);
+                break;
+            case "newest":
+            default:
+                videos = videoRepository.findPublicVideosNative(newPageable);
+                break;
+        }
+        
+        return videos.map(videoMapper::toVideoResponse);
     }
 
     /**

@@ -4,6 +4,8 @@ import com.example.backendWVideos.enums.VideoStatus;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.Fetch;
+import org.hibernate.annotations.FetchMode;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
@@ -64,12 +66,21 @@ public class Video {
     @Column(name = "views")
     private Long views = 0L;
     
+    @Column(name = "favorites_count")
+    @Builder.Default
+    private Long favoritesCount = 0L;
+    
+    @Column(name = "comments_count")
+    @Builder.Default
+    private Long commentsCount = 0L;
+    
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private VideoStatus status = VideoStatus.UPLOADING;
     
     // User relationship
     @ManyToOne(fetch = FetchType.LAZY)
+    @Fetch(FetchMode.JOIN)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
     
@@ -78,6 +89,7 @@ public class Video {
     
     // Thể loại video (nhiều thể loại)
     @ManyToMany(fetch = FetchType.LAZY)
+    @Fetch(FetchMode.SUBSELECT)
     @JoinTable(
         name = "video_categories",
         joinColumns = @JoinColumn(name = "video_id"),
@@ -87,6 +99,7 @@ public class Video {
     
     // Tags cho video
     @ElementCollection
+    @Fetch(FetchMode.SUBSELECT)
     @CollectionTable(name = "video_tags", joinColumns = @JoinColumn(name = "video_id"))
     @Column(name = "tag")
     private Set<String> tags = new HashSet<>();

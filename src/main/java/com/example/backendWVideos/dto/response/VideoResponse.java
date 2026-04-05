@@ -26,6 +26,8 @@ public class VideoResponse {
     private Long fileSize;
     private Long duration;
     private Long views;
+    private Long favoritesCount;
+    private Long commentsCount;
     private VideoStatus status;
     private Boolean isPublic;
     private List<CategoryResponse> categories;

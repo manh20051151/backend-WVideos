@@ -31,6 +31,28 @@ public interface VideoRepository extends JpaRepository<Video, String> {
     @EntityGraph(attributePaths = {"categories", "user", "tags"})
     Page<Video> findByStatusAndIsPublic(VideoStatus status, Boolean isPublic, Pageable pageable);
     
+    // JPQL query với EntityGraph để tránh lazy loading issue
+    @EntityGraph(attributePaths = {"categories", "user", "tags"})
+    @Query("SELECT v FROM Video v WHERE v.status = 'READY' AND v.isPublic = true ORDER BY v.createdAt DESC")
+    Page<Video> findPublicVideosNative(Pageable pageable);
+    
+    // JPQL query với custom sort
+    @EntityGraph(attributePaths = {"categories", "user", "tags"})
+    @Query("SELECT v FROM Video v WHERE v.status = 'READY' AND v.isPublic = true ORDER BY v.views DESC")
+    Page<Video> findPublicVideosByViews(Pageable pageable);
+    
+    @EntityGraph(attributePaths = {"categories", "user", "tags"})
+    @Query("SELECT v FROM Video v WHERE v.status = 'READY' AND v.isPublic = true ORDER BY v.favoritesCount DESC")
+    Page<Video> findPublicVideosByFavorites(Pageable pageable);
+    
+    @EntityGraph(attributePaths = {"categories", "user", "tags"})
+    @Query("SELECT v FROM Video v WHERE v.status = 'READY' AND v.isPublic = true ORDER BY v.commentsCount DESC")
+    Page<Video> findPublicVideosByComments(Pageable pageable);
+    
+    @EntityGraph(attributePaths = {"categories", "user", "tags"})
+    @Query("SELECT v FROM Video v WHERE v.status = 'READY' AND v.isPublic = true ORDER BY v.duration DESC")
+    Page<Video> findPublicVideosByDuration(Pageable pageable);
+    
     @EntityGraph(attributePaths = {"categories", "user", "tags"})
     Page<Video> findByUserIdAndStatusNot(String userId, VideoStatus status, Pageable pageable);
     
