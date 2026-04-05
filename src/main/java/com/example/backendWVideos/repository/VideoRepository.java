@@ -53,25 +53,20 @@ public interface VideoRepository extends JpaRepository<Video, String> {
     @Query("SELECT v FROM Video v WHERE v.status = 'READY' AND v.isPublic = true ORDER BY v.duration DESC")
     Page<Video> findPublicVideosByDuration(Pageable pageable);
     
-    // All videos queries (bao gồm cả không công khai)
-    @EntityGraph(attributePaths = {"categories", "user", "tags"})
-    @Query("SELECT v FROM Video v WHERE v.status = 'READY' ORDER BY v.createdAt DESC")
+    // All videos queries (bao gồm cả không công khai) - dùng DISTINCT để tránh warning
+    @Query("SELECT DISTINCT v FROM Video v LEFT JOIN FETCH v.categories LEFT JOIN FETCH v.user LEFT JOIN FETCH v.tags WHERE v.status = 'READY' ORDER BY v.createdAt DESC")
     Page<Video> findAllVideosByCreatedAt(Pageable pageable);
     
-    @EntityGraph(attributePaths = {"categories", "user", "tags"})
-    @Query("SELECT v FROM Video v WHERE v.status = 'READY' ORDER BY v.views DESC")
+    @Query("SELECT DISTINCT v FROM Video v LEFT JOIN FETCH v.categories LEFT JOIN FETCH v.user LEFT JOIN FETCH v.tags WHERE v.status = 'READY' ORDER BY v.views DESC")
     Page<Video> findAllVideosByViews(Pageable pageable);
     
-    @EntityGraph(attributePaths = {"categories", "user", "tags"})
-    @Query("SELECT v FROM Video v WHERE v.status = 'READY' ORDER BY v.favoritesCount DESC")
+    @Query("SELECT DISTINCT v FROM Video v LEFT JOIN FETCH v.categories LEFT JOIN FETCH v.user LEFT JOIN FETCH v.tags WHERE v.status = 'READY' ORDER BY v.favoritesCount DESC")
     Page<Video> findAllVideosByFavorites(Pageable pageable);
     
-    @EntityGraph(attributePaths = {"categories", "user", "tags"})
-    @Query("SELECT v FROM Video v WHERE v.status = 'READY' ORDER BY v.commentsCount DESC")
+    @Query("SELECT DISTINCT v FROM Video v LEFT JOIN FETCH v.categories LEFT JOIN FETCH v.user LEFT JOIN FETCH v.tags WHERE v.status = 'READY' ORDER BY v.commentsCount DESC")
     Page<Video> findAllVideosByComments(Pageable pageable);
     
-    @EntityGraph(attributePaths = {"categories", "user", "tags"})
-    @Query("SELECT v FROM Video v WHERE v.status = 'READY' ORDER BY v.duration DESC")
+    @Query("SELECT DISTINCT v FROM Video v LEFT JOIN FETCH v.categories LEFT JOIN FETCH v.user LEFT JOIN FETCH v.tags WHERE v.status = 'READY' ORDER BY v.duration DESC")
     Page<Video> findAllVideosByDuration(Pageable pageable);
     
     @EntityGraph(attributePaths = {"categories", "user", "tags"})

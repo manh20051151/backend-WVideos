@@ -80,7 +80,6 @@ public class Video {
     
     // User relationship
     @ManyToOne(fetch = FetchType.LAZY)
-    @Fetch(FetchMode.JOIN)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
     
@@ -89,17 +88,15 @@ public class Video {
     
     // Thể loại video (nhiều thể loại)
     @ManyToMany(fetch = FetchType.LAZY)
-    @Fetch(FetchMode.SUBSELECT)
     @JoinTable(
         name = "video_categories",
         joinColumns = @JoinColumn(name = "video_id"),
         inverseJoinColumns = @JoinColumn(name = "category_id")
     )
     private Set<Category> categories = new HashSet<>();
-    
+
     // Tags cho video
     @ElementCollection
-    @Fetch(FetchMode.SUBSELECT)
     @CollectionTable(name = "video_tags", joinColumns = @JoinColumn(name = "video_id"))
     @Column(name = "tag")
     private Set<String> tags = new HashSet<>();
