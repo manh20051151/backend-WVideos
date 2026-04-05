@@ -45,9 +45,12 @@ public class SecurityConfig {
     private final String[] PUBLIC_ENDPOINTS_GET = {
         "/users/confirm",
         "/users/confirm/**",
-        "/videos/public",  // Public videos
+        "/videos/public",  // Public videos list
+        "/videos/all",  // All videos list
+        "/videos/*",  // Video details (GET only)
         "/videos/*/view",   // Increment views
         "/videos/*/stream-url",  // Stream URL proxy
+        "/videos/*/comments",  // Comments
         "/categories"      // Public categories
     };
 

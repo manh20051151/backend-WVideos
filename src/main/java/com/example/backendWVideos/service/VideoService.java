@@ -462,12 +462,50 @@ public class VideoService {
     }
 
     /**
-     * Lấy chi tiết video
+     * Lấy danh sách tất cả video (bao gồm cả không công khai) - hiển thị cho tất cả mọi người
+     * Chỉ khi click vào xem mới yêu cầu đăng nhập với video không công khai
      */
     @Transactional(readOnly = true)
-    public VideoResponse getVideoById(String videoId) {
+    public Page<VideoResponse> getAllVideos(Pageable pageable, String sortType) {
+        String sort = sortType != null ? sortType : "newest";
+        Pageable newPageable = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize());
+        
+        Page<Video> videos;
+        switch (sort) {
+            case "popular":
+                videos = videoRepository.findAllVideosByViews(newPageable);
+                break;
+            case "favorites":
+                videos = videoRepository.findAllVideosByFavorites(newPageable);
+                break;
+            case "comments":
+                videos = videoRepository.findAllVideosByComments(newPageable);
+                break;
+            case "longest":
+                videos = videoRepository.findAllVideosByDuration(newPageable);
+                break;
+            case "newest":
+            default:
+                videos = videoRepository.findAllVideosByCreatedAt(newPageable);
+                break;
+        }
+        
+        return videos.map(videoMapper::toVideoResponse);
+    }
+
+    /**
+     * Lấy chi tiết video - cho phép xem video công khai mà không cần đăng nhập,
+     * và cho phép người dùng đã đăng nhập xem video không công khai
+     */
+    @Transactional(readOnly = true)
+    public VideoResponse getVideoById(String videoId, String userEmail) {
         Video video = videoRepository.findById(videoId)
                 .orElseThrow(() -> new AppException(ErrorCode.VIDEO_NOT_FOUND));
+        
+        // Nếu video không công khai và không có người dùng đăng nhập thì không cho xem
+        if (!video.getIsPublic() && (userEmail == null || userEmail.isEmpty() || "anonymousUser".equals(userEmail))) {
+            throw new AppException(ErrorCode.UNAUTHORIZED, "Bạn cần đăng nhập để xem video này");
+        }
         
         return videoMapper.toVideoResponse(video);
     }

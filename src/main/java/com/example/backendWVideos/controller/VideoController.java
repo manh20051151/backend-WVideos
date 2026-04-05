@@ -35,7 +35,10 @@ import java.util.regex.Pattern;
 public class VideoController {
 
     private final VideoService videoService;
-    private final RestTemplate restTemplate = new RestTemplate();
+    
+    private RestTemplate getRestTemplate() {
+        return new RestTemplate();
+    }
 
     @Operation(summary = "Init upload", description = "Khởi tạo upload - tạo video record và lấy upload server")
     @PostMapping("/init-upload")
@@ -184,10 +187,31 @@ public class VideoController {
                 .build();
     }
 
+    @Operation(summary = "Get all videos", description = "Lấy danh sách tất cả video (công khai và không công khai)")
+    @GetMapping("/all")
+    public ApiResponse<Page<VideoResponse>> getAllVideos(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "newest") String sort
+    ) {
+        Pageable pageable = PageRequest.of(page, size);
+        
+        Page<VideoResponse> videos = videoService.getAllVideos(pageable, sort);
+        
+        return ApiResponse.<Page<VideoResponse>>builder()
+                .result(videos)
+                .build();
+    }
+
     @Operation(summary = "Get video by ID", description = "Lấy chi tiết video")
     @GetMapping("/{videoId}")
     public ApiResponse<VideoResponse> getVideoById(@PathVariable String videoId) {
-        VideoResponse video = videoService.getVideoById(videoId);
+        String userEmail = SecurityContextHolder.getContext().getAuthentication().getName();
+        // Nếu là anonymousUser thì set null
+        if ("anonymousUser".equals(userEmail)) {
+            userEmail = null;
+        }
+        VideoResponse video = videoService.getVideoById(videoId, userEmail);
         
         return ApiResponse.<VideoResponse>builder()
                 .result(video)
@@ -278,7 +302,7 @@ public class VideoController {
             headers.set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36");
             HttpEntity<String> entity = new HttpEntity<>(headers);
             
-            ResponseEntity<String> embedResponse = restTemplate.exchange(
+            ResponseEntity<String> embedResponse = getRestTemplate().exchange(
                 embedUrl, HttpMethod.GET, entity, String.class);
             String html = embedResponse.getBody();
             
@@ -300,7 +324,7 @@ public class VideoController {
                 log.info("🔑 Gọi pass_md5 URL: {}", passMd5Url);
                 
                 // Bước 2: Gọi pass_md5 endpoint để lấy base URL
-                ResponseEntity<String> passMd5Response = restTemplate.exchange(
+                ResponseEntity<String> passMd5Response = getRestTemplate().exchange(
                     passMd5Url, HttpMethod.GET, entity, String.class);
                 baseVideoUrl = passMd5Response.getBody();
                 

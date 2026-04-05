@@ -53,6 +53,27 @@ public interface VideoRepository extends JpaRepository<Video, String> {
     @Query("SELECT v FROM Video v WHERE v.status = 'READY' AND v.isPublic = true ORDER BY v.duration DESC")
     Page<Video> findPublicVideosByDuration(Pageable pageable);
     
+    // All videos queries (bao gồm cả không công khai)
+    @EntityGraph(attributePaths = {"categories", "user", "tags"})
+    @Query("SELECT v FROM Video v WHERE v.status = 'READY' ORDER BY v.createdAt DESC")
+    Page<Video> findAllVideosByCreatedAt(Pageable pageable);
+    
+    @EntityGraph(attributePaths = {"categories", "user", "tags"})
+    @Query("SELECT v FROM Video v WHERE v.status = 'READY' ORDER BY v.views DESC")
+    Page<Video> findAllVideosByViews(Pageable pageable);
+    
+    @EntityGraph(attributePaths = {"categories", "user", "tags"})
+    @Query("SELECT v FROM Video v WHERE v.status = 'READY' ORDER BY v.favoritesCount DESC")
+    Page<Video> findAllVideosByFavorites(Pageable pageable);
+    
+    @EntityGraph(attributePaths = {"categories", "user", "tags"})
+    @Query("SELECT v FROM Video v WHERE v.status = 'READY' ORDER BY v.commentsCount DESC")
+    Page<Video> findAllVideosByComments(Pageable pageable);
+    
+    @EntityGraph(attributePaths = {"categories", "user", "tags"})
+    @Query("SELECT v FROM Video v WHERE v.status = 'READY' ORDER BY v.duration DESC")
+    Page<Video> findAllVideosByDuration(Pageable pageable);
+    
     @EntityGraph(attributePaths = {"categories", "user", "tags"})
     Page<Video> findByUserIdAndStatusNot(String userId, VideoStatus status, Pageable pageable);
     
