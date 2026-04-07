@@ -4,6 +4,7 @@ package com.example.backendWVideos.controller;
 import com.example.backendWVideos.dto.request.*;
 import com.example.backendWVideos.dto.request.ChangePasswordRequest;
 import com.example.backendWVideos.dto.request.ApiResponse;
+import com.example.backendWVideos.dto.response.UserFinancialInfoDTO;
 import com.example.backendWVideos.entity.User;
 import com.example.backendWVideos.exception.AppException;
 import com.example.backendWVideos.exception.ErrorCode;
@@ -11,6 +12,7 @@ import com.example.backendWVideos.dto.response.UserResponse;
 import com.example.backendWVideos.mapper.UserMapper;
 import com.example.backendWVideos.repository.UserRepository;
 import com.example.backendWVideos.service.UserService;
+import com.example.backendWVideos.service.UserFinancialService;
 import jakarta.validation.Valid;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -33,6 +35,7 @@ public class UserController {
     UserService userService;
     UserMapper userMapper;
     UserRepository userRepository;
+    UserFinancialService userFinancialService;
     
     /**
      * Xác thực quyền admin từ server - endpoint này chỉ trả về success nếu user có role ADMIN
@@ -251,6 +254,16 @@ public class UserController {
                 .code(1000)
                 .message("Xóa thông tin ngân hàng thành công")
                 .result(userResponse)
+                .build();
+    }
+
+    @GetMapping("/{userId}/financial-info")
+    public ApiResponse<UserFinancialInfoDTO> getUserFinancialInfo(@PathVariable String userId) {
+        UserFinancialInfoDTO financialInfo = userFinancialService.getUserFinancialInfo(userId);
+        return ApiResponse.<UserFinancialInfoDTO>builder()
+                .code(1000)
+                .message("Lấy thông tin tài chính thành công")
+                .result(financialInfo)
                 .build();
     }
 

@@ -95,8 +95,13 @@ jwt:
   refreshable-duration: ${env.JWT_REFRESHABLE_DURATION:604800} # 7 day in seconds
 
 # Application Configuration
+# Sepay Configuration
 app:
   frontend-url: ${env.FRONTEND_URL:http://localhost:3000}
+  sepay:
+    api-url: https://my.sepay.vn/userapi/transactions/list
+    account-number: "0375000169"
+    api-token: "HG9DYJZHSEJPPLR5IYKB1DODLN68JAINR2UHAVSZQB70ONYXFEKQT34DNWJSTAW0"
 
 # DoodStream Configuration
 doodstream:
@@ -105,6 +110,9 @@ doodstream:
   upload-server-endpoint: /upload/server
   file-info-endpoint: /file/info
   file-list-endpoint: /file/list
+
+
+
 
 # Swagger/OpenAPI Configuration
 springdoc:
