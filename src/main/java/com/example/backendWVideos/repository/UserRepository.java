@@ -4,6 +4,7 @@ import com.example.backendWVideos.entity.User;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -67,4 +68,47 @@ public interface UserRepository extends JpaRepository<User, String> {
     // Load user kèm theo roles (without purchasedDocuments)
     @Query("SELECT u FROM User u LEFT JOIN FETCH u.roles WHERE u.id = :userId")
     Optional<User> findByIdWithRolesAndPurchasedDocuments(@Param("userId") String userId);
+
+    // Native query - bỏ qua @SQLRestriction
+    @Query(value = "SELECT * FROM users WHERE id = :userId", nativeQuery = true)
+    Optional<User> findByIdIncludingLocked(@Param("userId") String userId);
+    
+    // Native query - bỏ qua @SQLRestriction và lấy user kèm roles
+    @Query(value = """
+        SELECT u.id, u.username, u.password, u.number_phone, u.full_name, u.avatar, u.email, 
+               u.gender, u.bank_name, u.bank_account_holder_name, u.bank_account_number,
+               r.id as role_id, r.name as role_name, r.description as role_description
+        FROM users u 
+        LEFT JOIN user_roles ur ON u.id = ur.user_id 
+        LEFT JOIN roles r ON ur.role_id = r.id 
+        WHERE u.email = :email
+        """, nativeQuery = true)
+    List<Object[]> findUserWithRolesByEmail(@Param("email") String email);
+    
+    // Native query - bỏ qua @SQLRestriction và lấy user kèm roles theo ID
+    @Query(value = """
+        SELECT u.id, u.username, u.password, u.number_phone, u.full_name, u.avatar, u.email, 
+               u.gender, u.bank_name, u.bank_account_holder_name, u.bank_account_number,
+               r.id as role_id, r.name as role_name, r.description as role_description
+        FROM users u 
+        LEFT JOIN user_roles ur ON u.id = ur.user_id 
+        LEFT JOIN roles r ON ur.role_id = r.id 
+        WHERE u.id = :userId
+        """, nativeQuery = true)
+    List<Object[]> findUserWithRolesById(@Param("userId") String userId);
+    
+    // Native update - bỏ qua @SQLRestriction
+    @Modifying
+    @Query(value = """
+        UPDATE users 
+        SET full_name = COALESCE(:fullName, full_name),
+            number_phone = COALESCE(:numberPhone, number_phone),
+            gender = COALESCE(:gender, gender),
+            avatar = COALESCE(:avatar, avatar),
+            bank_name = COALESCE(:bankName, bank_name),
+            bank_account_holder_name = COALESCE(:bankAccountHolderName, bank_account_holder_name),
+            bank_account_number = COALESCE(:bankAccountNumber, bank_account_number)
+        WHERE email = :email
+        """, nativeQuery = true)
+    void updateUserInfo(@Param("email") String email, @Param("fullName") String fullName, @Param("numberPhone") String numberPhone, @Param("gender") Boolean gender, @Param("avatar") String avatar, @Param("bankName") String bankName, @Param("bankAccountHolderName") String bankAccountHolderName, @Param("bankAccountNumber") String bankAccountNumber);
 }

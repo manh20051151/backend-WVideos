@@ -16,6 +16,7 @@ public class UserUpdateByUserRequest {
     LocalDate dob;
     String email;
     Boolean gender; // True là nam
+    String avatar; // URL ảnh đại diện
     
     // Thông tin ngân hàng
     String bankName; // Tên ngân hàng

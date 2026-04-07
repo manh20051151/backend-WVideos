@@ -178,18 +178,24 @@ public class UserService {
         var context = SecurityContextHolder.getContext();
         String email = context.getAuthentication().getName();
 
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+        log.info("Người dùng tự cập nhật thông tin - Email: {}", email);
 
-        log.info("Người dùng tự cập nhật thông tin - User: {}", user.getId());
-
-        // Cập nhật qua mapper (chỉ thông tin cơ bản, không bao gồm password)
-        userMapper.updateUserByUser(user, request);
-
-        // Lưu thay đổi
-        user = userRepository.save(user);
-        log.info("Cập nhật thông tin cá nhân thành công - User: {}", user.getId());
-        return userMapper.toUserResponse(user);
+        // Cập nhật bằng native query để bỏ qua @SQLRestriction
+        userRepository.updateUserInfo(
+                email,
+                request.getFullName(),
+                request.getNumberPhone(),
+                request.getGender(),
+                request.getAvatar(),
+                request.getBankName(),
+                request.getBankAccountHolderName(),
+                request.getBankAccountNumber()
+        );
+        
+        log.info("Cập nhật thông tin cá nhân thành công - Email: {}", email);
+        
+        // Load lại user mới nhất bằng native query
+        return getMyInfo();
     }
 
     /**
@@ -233,12 +239,43 @@ public class UserService {
         var context =  SecurityContextHolder.getContext();
         String name =  context.getAuthentication().getName();
 
-        // Tìm user theo email
-        User user =  userRepository.findByEmail(name).orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+        // Dùng native query để bỏ qua @SQLRestriction và lấy user kèm roles
+        List<Object[]> userRows = userRepository.findUserWithRolesByEmail(name);
         
-        // Load lại user kèm theo purchasedDocuments và roles
-        user = userRepository.findByIdWithRolesAndPurchasedDocuments(user.getId())
-                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+        if (userRows.isEmpty()) {
+            throw new AppException(ErrorCode.USER_NOT_EXISTED);
+        }
+        
+        Object[] firstRow = userRows.get(0);
+        
+        // Build user từ kết quả native query
+        User user = User.builder()
+                .id(String.valueOf(firstRow[0]))
+                .username(firstRow[1] != null ? String.valueOf(firstRow[1]) : null)
+                .password(firstRow[2] != null ? String.valueOf(firstRow[2]) : null)
+                .numberPhone(firstRow[3] != null ? String.valueOf(firstRow[3]) : null)
+                .fullName(firstRow[4] != null ? String.valueOf(firstRow[4]) : null)
+                .avatar(firstRow[5] != null ? String.valueOf(firstRow[5]) : null)
+                .email(firstRow[6] != null ? String.valueOf(firstRow[6]) : null)
+                .gender(firstRow[7] != null)
+                .bankName(firstRow[8] != null ? String.valueOf(firstRow[8]) : null)
+                .bankAccountHolderName(firstRow[9] != null ? String.valueOf(firstRow[9]) : null)
+                .bankAccountNumber(firstRow[10] != null ? String.valueOf(firstRow[10]) : null)
+                .build();
+        
+        // Load roles từ các row còn lại
+        Set<Role> roles = new HashSet<>();
+        for (Object[] row : userRows) {
+            if (row[11] != null) { // role_id
+                Role role = Role.builder()
+                        .id(String.valueOf(row[11]))
+                        .name(row[12] != null ? String.valueOf(row[12]) : null)
+                        .description(row[13] != null ? String.valueOf(row[13]) : null)
+                        .build();
+                roles.add(role);
+            }
+        }
+        user.setRoles(roles);
 
         return userMapper.toUserResponse(user);
     }
