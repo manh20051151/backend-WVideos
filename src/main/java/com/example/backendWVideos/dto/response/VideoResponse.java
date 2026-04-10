@@ -34,6 +34,8 @@ public class VideoResponse {
     private Set<String> tags;
     private String userId;
     private String userFullName;
+    private Long subscriberCount;
+    private Boolean isSubscribed;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private LocalDateTime uploadedToDoodStreamAt;

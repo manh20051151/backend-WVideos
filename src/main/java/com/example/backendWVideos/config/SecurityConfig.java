@@ -33,13 +33,13 @@ public class SecurityConfig {
     private String frontendUrl;
 
     private final String[] PUBLIC_ENDPOINTS = {
-        "/users/register", 
-        "/users/confirm",
+            "/users/register",
+            "/users/confirm",
             "/auth/token",
             "/auth/infinite-token",
             "/auth/introspect",
-        "/auth/logout", 
-        "/auth/refresh"
+            "/auth/logout",
+            "/auth/refresh"
     };
     
     private final String[] PUBLIC_ENDPOINTS_GET = {

@@ -97,6 +97,10 @@ public enum ErrorCode {
     
     // Comment errors
     COMMENT_NOT_FOUND(9701, "Không tìm thấy bình luận", HttpStatus.NOT_FOUND),
+    
+    // Subscription errors
+    ALREADY_SUBSCRIBED(9801, "Bạn đã đăng ký kênh này rồi", HttpStatus.BAD_REQUEST),
+    NOT_SUBSCRIBED(9802, "Bạn chưa đăng ký kênh này", HttpStatus.BAD_REQUEST),
     ;
 
     ErrorCode(int code, String message, HttpStatusCode statusCode) {

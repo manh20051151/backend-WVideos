@@ -14,6 +14,7 @@ import com.example.backendWVideos.exception.ErrorCode;
 import com.example.backendWVideos.mapper.VideoMapper;
 import com.example.backendWVideos.repository.UserRepository;
 import com.example.backendWVideos.repository.VideoRepository;
+import com.example.backendWVideos.repository.SubscriptionRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -47,6 +48,7 @@ public class VideoService {
     private final RedisTemplate<String, String> redisTemplate;
     private final CategoryService categoryService;
     private final VideoUploadAsyncService videoUploadAsyncService;
+    private final SubscriptionRepository subscriptionRepository;
 
     /**
      * Init upload - Tạo video record và lấy upload server
@@ -507,7 +509,23 @@ public class VideoService {
             throw new AppException(ErrorCode.UNAUTHORIZED, "Bạn cần đăng nhập để xem video này");
         }
         
-        return videoMapper.toVideoResponse(video);
+        VideoResponse response = videoMapper.toVideoResponse(video);
+        
+        // Lấy số người đăng ký của channel
+        long subscriberCount = subscriptionRepository.countByChannelId(video.getUser().getId());
+        response.setSubscriberCount(subscriberCount);
+        
+        // Kiểm tra user hiện tại đã đăng ký chưa
+        if (userEmail != null && !userEmail.isEmpty() && !"anonymousUser".equals(userEmail)) {
+            User currentUser = userRepository.findByEmail(userEmail).orElse(null);
+            if (currentUser != null) {
+                boolean isSubscribed = subscriptionRepository.existsBySubscriberIdAndChannelId(
+                        currentUser.getId(), video.getUser().getId());
+                response.setIsSubscribed(isSubscribed);
+            }
+        }
+        
+        return response;
     }
 
     /**
