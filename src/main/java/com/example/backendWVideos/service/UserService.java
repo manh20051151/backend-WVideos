@@ -14,10 +14,29 @@ import com.example.backendWVideos.dto.request.UserUpdateByUserRequest;
 import com.example.backendWVideos.dto.request.UserUpdateRequest;
 import com.example.backendWVideos.dto.request.ApiResponse;
 import com.example.backendWVideos.dto.response.UserResponse;
+import com.example.backendWVideos.dto.response.UserProfileResponse;
+import com.example.backendWVideos.dto.response.VideoResponse;
+import com.example.backendWVideos.entity.Role;
+import com.example.backendWVideos.entity.User;
+import com.example.backendWVideos.entity.Video;
+import com.example.backendWVideos.entity.PendingRegistration;
+import com.example.backendWVideos.enums.AuthProvider;
+import com.example.backendWVideos.enums.VideoStatus;
+import com.example.backendWVideos.exception.AppException;
+import com.example.backendWVideos.exception.ErrorCode;
+import com.example.backendWVideos.dto.request.BankInfoUpdateRequest;
+import com.example.backendWVideos.dto.request.ChangePasswordRequest;
+import com.example.backendWVideos.dto.request.UserCreateRequest;
+import com.example.backendWVideos.dto.request.UserUpdateByUserRequest;
+import com.example.backendWVideos.dto.request.UserUpdateRequest;
+import com.example.backendWVideos.dto.request.ApiResponse;
 import com.example.backendWVideos.mapper.UserMapper;
+import com.example.backendWVideos.mapper.VideoMapper;
 import com.example.backendWVideos.repository.RoleRepository;
 import com.example.backendWVideos.repository.UserRepository;
 import com.example.backendWVideos.repository.PendingRegistrationRepository;
+import com.example.backendWVideos.repository.VideoRepository;
+import com.example.backendWVideos.repository.SubscriptionRepository;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 import lombok.AccessLevel;
@@ -25,6 +44,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
@@ -55,6 +75,9 @@ public class UserService {
     final PasswordEncoder passwordEncoder;
     final JavaMailSender mailSender;
     final PendingRegistrationRepository pendingRegistrationRepository;
+    final VideoRepository videoRepository;
+    final VideoMapper videoMapper;
+    final SubscriptionRepository subscriptionRepository;
 
     @Value("${app.registration.token.expiration-minutes:30}")
     int expirationMinutes;
@@ -550,5 +573,55 @@ public class UserService {
             return "****";
         }
         return "****" + accountNumber.substring(accountNumber.length() - 4);
+    }
+    
+    /**
+     * Lấy thông tin profile của user (dùng cho trang channel)
+     */
+    @Transactional(readOnly = true)
+    public UserProfileResponse getUserProfile(String userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+        
+        // Đếm số video
+        long videoCount = videoRepository.countByUserIdAndStatusNot(userId, VideoStatus.DELETED);
+        
+        // Tính tổng lượt xem
+        Long totalViews = videoRepository.getTotalViewsByUserId(userId, VideoStatus.DELETED);
+        if (totalViews == null) totalViews = 0L;
+        
+        // Đếm số người đăng ký
+        long subscriberCount = subscriptionRepository.countByChannelId(userId);
+        
+        // Lấy danh sách video (public only, không bị xóa)
+        Page<Video> videos = videoRepository.findByUserIdAndStatus(userId, VideoStatus.READY, PageRequest.of(0, 20));
+        List<VideoResponse> videoResponses = videos.getContent().stream()
+                .map(videoMapper::toVideoResponse)
+                .toList();
+        
+        // Kiểm tra user hiện tại đã đăng ký chưa
+        Boolean isSubscribed = null;
+        try {
+            var context = SecurityContextHolder.getContext();
+            String email = context.getAuthentication().getName();
+            User currentUser = userRepository.findByEmail(email).orElse(null);
+            if (currentUser != null && !currentUser.getId().equals(userId)) {
+                isSubscribed = subscriptionRepository.existsBySubscriberIdAndChannelId(currentUser.getId(), userId);
+            }
+        } catch (Exception e) {
+            // User chưa đăng nhập
+        }
+        
+        return UserProfileResponse.builder()
+                .id(user.getId())
+                .email(user.getEmail())
+                .fullName(user.getFullName())
+                .avatar(user.getAvatar())
+                .subscriberCount(subscriberCount)
+                .videoCount(videoCount)
+                .totalViews(totalViews)
+                .isSubscribed(isSubscribed)
+                .videos(videoResponses)
+                .build();
     }
 }

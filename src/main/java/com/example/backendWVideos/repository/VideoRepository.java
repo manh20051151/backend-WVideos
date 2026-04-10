@@ -79,6 +79,9 @@ public interface VideoRepository extends JpaRepository<Video, String> {
     
     Long countByUserIdAndStatus(String userId, VideoStatus status);
     
+    // Đếm video không bao gồm status nhất định
+    Long countByUserIdAndStatusNot(String userId, VideoStatus status);
+    
     // Thêm method đếm video theo status cho dashboard
     Long countByStatus(VideoStatus status);
     
@@ -88,4 +91,8 @@ public interface VideoRepository extends JpaRepository<Video, String> {
     @Modifying
     @Query("UPDATE Video v SET v.views = v.views + 1 WHERE v.id = :videoId")
     int incrementViewsById(@Param("videoId") String videoId);
+    
+    // Lấy tổng lượt xem của user
+    @Query("SELECT COALESCE(SUM(v.views), 0) FROM Video v WHERE v.user.id = :userId AND v.status != :status")
+    Long getTotalViewsByUserId(@Param("userId") String userId, @Param("status") VideoStatus status);
 }

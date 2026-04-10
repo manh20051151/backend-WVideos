@@ -5,6 +5,7 @@ import com.example.backendWVideos.dto.request.*;
 import com.example.backendWVideos.dto.request.ChangePasswordRequest;
 import com.example.backendWVideos.dto.request.ApiResponse;
 import com.example.backendWVideos.dto.response.UserFinancialInfoDTO;
+import com.example.backendWVideos.dto.response.UserProfileResponse;
 import com.example.backendWVideos.entity.User;
 import com.example.backendWVideos.exception.AppException;
 import com.example.backendWVideos.exception.ErrorCode;
@@ -264,6 +265,19 @@ public class UserController {
                 .code(1000)
                 .message("Lấy thông tin tài chính thành công")
                 .result(financialInfo)
+                .build();
+    }
+    
+    /**
+     * Lấy thông tin profile của user (dùng cho trang channel)
+     */
+    @GetMapping("/{userId}/profile")
+    public ApiResponse<UserProfileResponse> getUserProfile(@PathVariable String userId) {
+        UserProfileResponse profile = userService.getUserProfile(userId);
+        return ApiResponse.<UserProfileResponse>builder()
+                .code(1000)
+                .message("OK")
+                .result(profile)
                 .build();
     }
 
