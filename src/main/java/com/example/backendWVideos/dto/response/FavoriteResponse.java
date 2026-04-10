@@ -14,6 +14,6 @@ public class FavoriteResponse {
     String id;
     String videoId;
     String userId;
-    String username;
+    String userFullName;
     LocalDateTime createdAt;
 }

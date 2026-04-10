@@ -183,7 +183,7 @@ public class DashboardService {
         
         try {
             // Query đơn giản nhất
-            String sql = "SELECT id, username, email, joined_date FROM users ORDER BY joined_date DESC LIMIT 10";
+            String sql = "SELECT id, email, joined_date FROM users ORDER BY joined_date DESC LIMIT 10";
             List<Map<String, Object>> userResults = jdbcTemplate.queryForList(sql);
             
             for (Map<String, Object> row : userResults) {
@@ -199,7 +199,6 @@ public class DashboardService {
                 
                 stats.add(DashboardStatsResponse.UserStats.builder()
                         .userId(userId)
-                        .username((String) row.get("username"))
                         .email((String) row.get("email"))
                         .videoCount(videoCount != null ? videoCount : 0L)
                         .totalViews(totalViews != null ? totalViews : 0L)

@@ -41,7 +41,7 @@ public class VideoMapper {
                 .categories(mapCategoriesToResponse(video.getCategories()))
                 .tags(video.getTags())
                 .userId(video.getUser() != null ? video.getUser().getId() : null)
-                .username(video.getUser() != null ? video.getUser().getUsername() : null)
+                .userFullName(video.getUser() != null ? video.getUser().getFullName() : null)
                 .createdAt(video.getCreatedAt())
                 .updatedAt(video.getUpdatedAt())
                 .uploadedToDoodStreamAt(video.getUploadedToDoodStreamAt())
@@ -80,7 +80,7 @@ public class VideoMapper {
                 .sortOrder(category.getSortOrder())
                 .createdAt(category.getCreatedAt())
                 .updatedAt(category.getUpdatedAt())
-                .createdByUsername(category.getCreatedBy() != null ? category.getCreatedBy().getUsername() : null)
+                .createdByUsername(category.getCreatedBy() != null ? category.getCreatedBy().getFullName() : null)
                 .build();
     }
 }

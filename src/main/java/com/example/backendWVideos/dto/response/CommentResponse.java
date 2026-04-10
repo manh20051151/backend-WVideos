@@ -15,7 +15,7 @@ public class CommentResponse {
     String id;
     String content;
     String userId;
-    String username;
+    String userFullName;
     String videoId;
     String parentId;
     List<CommentResponse> replies;

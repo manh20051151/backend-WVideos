@@ -76,7 +76,7 @@ public class UserService {
             "https://res.cloudinary.com/dnvtmbmne/image/upload/v1744707484/et5vc9r9fejjgrjsvxyn.jpg";
     public User createUser(UserCreateRequest request) throws IOException {
 
-        if(userRepository.existsByUsername(request.getUsername())){
+        if(userRepository.existsByEmail(request.getEmail())){
             throw new AppException(ErrorCode.USER_EXISTED);
         }
         User user = userMapper.toUser(request);
@@ -113,7 +113,7 @@ public class UserService {
 
 
 
-    @PostAuthorize("returnObject.username == authentication.name")
+    @PostAuthorize("returnObject.email == authentication.name")
     public UserResponse getUser(String id){
         // Load user kèm theo purchasedDocuments và roles
         User user = userRepository.findByIdWithRolesAndPurchasedDocuments(id)
@@ -121,7 +121,6 @@ public class UserService {
         return userMapper.toUserResponse(user);
     }
 
-//    @PostAuthorize("returnObject.username == authentication.name")
     public UserResponse getUserNotoken(String id){
         // Load user kèm theo purchasedDocuments và roles
         User user = userRepository.findByIdWithRolesAndPurchasedDocuments(id)
@@ -251,26 +250,25 @@ public class UserService {
         // Build user từ kết quả native query
         User user = User.builder()
                 .id(String.valueOf(firstRow[0]))
-                .username(firstRow[1] != null ? String.valueOf(firstRow[1]) : null)
-                .password(firstRow[2] != null ? String.valueOf(firstRow[2]) : null)
-                .numberPhone(firstRow[3] != null ? String.valueOf(firstRow[3]) : null)
-                .fullName(firstRow[4] != null ? String.valueOf(firstRow[4]) : null)
-                .avatar(firstRow[5] != null ? String.valueOf(firstRow[5]) : null)
-                .email(firstRow[6] != null ? String.valueOf(firstRow[6]) : null)
-                .gender(firstRow[7] != null)
-                .bankName(firstRow[8] != null ? String.valueOf(firstRow[8]) : null)
-                .bankAccountHolderName(firstRow[9] != null ? String.valueOf(firstRow[9]) : null)
-                .bankAccountNumber(firstRow[10] != null ? String.valueOf(firstRow[10]) : null)
+                .password(firstRow[1] != null ? String.valueOf(firstRow[1]) : null)
+                .numberPhone(firstRow[2] != null ? String.valueOf(firstRow[2]) : null)
+                .fullName(firstRow[3] != null ? String.valueOf(firstRow[3]) : null)
+                .avatar(firstRow[4] != null ? String.valueOf(firstRow[4]) : null)
+                .email(firstRow[5] != null ? String.valueOf(firstRow[5]) : null)
+                .gender(firstRow[6] != null)
+                .bankName(firstRow[7] != null ? String.valueOf(firstRow[7]) : null)
+                .bankAccountHolderName(firstRow[8] != null ? String.valueOf(firstRow[8]) : null)
+                .bankAccountNumber(firstRow[9] != null ? String.valueOf(firstRow[9]) : null)
                 .build();
         
         // Load roles từ các row còn lại
         Set<Role> roles = new HashSet<>();
         for (Object[] row : userRows) {
-            if (row[11] != null) { // role_id
+            if (row[10] != null) { // role_id
                 Role role = Role.builder()
-                        .id(String.valueOf(row[11]))
-                        .name(row[12] != null ? String.valueOf(row[12]) : null)
-                        .description(row[13] != null ? String.valueOf(row[13]) : null)
+                        .id(String.valueOf(row[10]))
+                        .name(row[11] != null ? String.valueOf(row[11]) : null)
+                        .description(row[12] != null ? String.valueOf(row[12]) : null)
                         .build();
                 roles.add(role);
             }
@@ -358,7 +356,7 @@ public class UserService {
     @RateLimiter(name = "registration")
     @Retry(name = "registration")
     public void startRegistration(UserCreateRequest request) {
-        // Kiểm tra username và email
+        // Kiểm tra email
         if (userRepository.existsByEmail(request.getEmail()) || 
             pendingRegistrationRepository.existsByEmail(request.getEmail())) {
             throw new AppException(ErrorCode.EMAIL_EXISTED);
@@ -366,7 +364,6 @@ public class UserService {
 
         // Tạo pending registration
         PendingRegistration registration = PendingRegistration.builder()
-                .username(request.getUsername())
                 .password(passwordEncoder.encode(request.getPassword()))
                 .email(request.getEmail())
                 .authProvider(AuthProvider.LOCAL)
@@ -399,7 +396,7 @@ public class UserService {
                 <a href="%s">Xác nhận đăng ký</a>
                 <p>Link này sẽ hết hạn sau %d phút.</p>
                 <p>Nếu bạn không yêu cầu đăng ký tài khoản, vui lòng bỏ qua email này.</p>
-                """, registration.getUsername(), confirmationUrl, expirationMinutes);
+                """, registration.getEmail(), confirmationUrl, expirationMinutes);
             
             helper.setText(emailContent, true);
             mailSender.send(message);
@@ -423,9 +420,8 @@ public class UserService {
 
             // Nếu đã confirm trước đó, trả về user hiện có
             if (registration.isConfirmed()) {
-                // Tìm user theo email (ưu tiên) hoặc username
+                // Tìm user theo email
                 return userRepository.findByEmail(registration.getEmail())
-                        .or(() -> userRepository.findByUsername(registration.getUsername()))
                         .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
             }
 
@@ -438,18 +434,8 @@ public class UserService {
                 return existingUserByEmail.get();
             }
 
-            // Kiểm tra nếu username đã tồn tại -> user đã được tạo với username này
-            // Optional<User> existingUserByUsername = userRepository.findByUsername(registration.getUsername());
-            // if (existingUserByUsername.isPresent()) {
-            //     log.info("User với username {} đã tồn tại, cập nhật trạng thái registration", registration.getUsername());
-            //     registration.setConfirmed(true);
-            //     pendingRegistrationRepository.save(registration);
-            //     return existingUserByUsername.get();
-            // }
-
             // Tạo user mới
             User user = User.builder()
-                    .username(registration.getUsername())
                     .password(registration.getPassword())
                     .email(registration.getEmail())
                     .authProvider(registration.getAuthProvider())

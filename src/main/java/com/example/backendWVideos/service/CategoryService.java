@@ -108,11 +108,11 @@ public class CategoryService {
                 .isActive(request.getIsActive())
                 .sortOrder(request.getSortOrder())
                 .createdBy(admin)
-                .createdByName(admin.getFullName() != null ? admin.getFullName() : admin.getUsername())
+                .createdByName(admin.getFullName() != null ? admin.getFullName() : admin.getEmail())
                 .build();
         
         Category savedCategory = categoryRepository.save(category);
-        log.info("Đã tạo thể loại mới: {} bởi admin: {}", savedCategory.getName(), admin.getUsername());
+        log.info("Đã tạo thể loại mới: {} bởi admin: {}", savedCategory.getName(), admin.getEmail());
         
         return mapToResponse(savedCategory);
     }
@@ -180,7 +180,7 @@ public class CategoryService {
                 .sortOrder(category.getSortOrder())
                 .createdAt(category.getCreatedAt())
                 .updatedAt(category.getUpdatedAt())
-                .createdByUsername(category.getCreatedBy() != null ? category.getCreatedBy().getUsername() : null)
+                .createdByUsername(category.getCreatedBy() != null ? category.getCreatedBy().getFullName() : null)
                 .createdByName(category.getCreatedByName())
                 .build();
     }

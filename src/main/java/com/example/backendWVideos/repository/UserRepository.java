@@ -14,8 +14,6 @@ import java.util.Optional;
 
 @Repository
 public interface UserRepository extends JpaRepository<User, String> {
-    boolean existsByUsername(String username);
-    Optional<User> findByUsername(String username);
     Optional<User> findByEmail(String email);
     boolean existsByEmail(String email);
 
@@ -75,7 +73,7 @@ public interface UserRepository extends JpaRepository<User, String> {
     
     // Native query - bỏ qua @SQLRestriction và lấy user kèm roles
     @Query(value = """
-        SELECT u.id, u.username, u.password, u.number_phone, u.full_name, u.avatar, u.email, 
+        SELECT u.id, u.password, u.number_phone, u.full_name, u.avatar, u.email, 
                u.gender, u.bank_name, u.bank_account_holder_name, u.bank_account_number,
                r.id as role_id, r.name as role_name, r.description as role_description
         FROM users u 
@@ -87,7 +85,7 @@ public interface UserRepository extends JpaRepository<User, String> {
     
     // Native query - bỏ qua @SQLRestriction và lấy user kèm roles theo ID
     @Query(value = """
-        SELECT u.id, u.username, u.password, u.number_phone, u.full_name, u.avatar, u.email, 
+        SELECT u.id, u.password, u.number_phone, u.full_name, u.avatar, u.email, 
                u.gender, u.bank_name, u.bank_account_holder_name, u.bank_account_number,
                r.id as role_id, r.name as role_name, r.description as role_description
         FROM users u 

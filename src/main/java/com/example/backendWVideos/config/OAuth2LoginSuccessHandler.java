@@ -69,7 +69,6 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
                 user = new User();
                 user.setEmail(email);
                 user.setFullName(name);
-                user.setUsername(email);
                 user.setAvatar(oAuth2User.getAttribute("picture"));
 
                 // Thêm role GUEST cho user mới

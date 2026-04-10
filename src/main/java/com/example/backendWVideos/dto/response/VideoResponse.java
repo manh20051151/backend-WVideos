@@ -33,7 +33,7 @@ public class VideoResponse {
     private List<CategoryResponse> categories;
     private Set<String> tags;
     private String userId;
-    private String username;
+    private String userFullName;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private LocalDateTime uploadedToDoodStreamAt;

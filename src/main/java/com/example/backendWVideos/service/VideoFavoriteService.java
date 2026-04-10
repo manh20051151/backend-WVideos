@@ -55,7 +55,7 @@ public class VideoFavoriteService {
             return FavoriteResponse.builder()
                     .id(favorite.getId())
                     .userId(user.getId())
-                    .username(user.getUsername())
+                    .userFullName(user.getFullName())
                     .videoId(videoId)
                     .createdAt(favorite.getCreatedAt())
                     .build();
@@ -77,7 +77,7 @@ public class VideoFavoriteService {
                 .map(f -> FavoriteResponse.builder()
                         .id(f.getId())
                         .userId(user.getId())
-                        .username(user.getUsername())
+                        .userFullName(user.getFullName())
                         .videoId(f.getVideo().getId())
                         .createdAt(f.getCreatedAt())
                         .build())
