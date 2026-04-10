@@ -19,6 +19,7 @@ public class DashboardStatsResponse {
     private Long totalVideos;
     private Long totalCategories;
     private Long totalViews;
+    private Long pendingComments;  // Số comment chờ duyệt
     
     // Thống kê video theo trạng thái
     private Long videosUploading;

@@ -25,6 +25,7 @@ public class DashboardService {
     private final UserRepository userRepository;
     private final VideoRepository videoRepository;
     private final CategoryRepository categoryRepository;
+    private final CommentService commentService;
     private final JdbcTemplate jdbcTemplate;
     
     /**
@@ -38,6 +39,7 @@ public class DashboardService {
         Long totalVideos = videoRepository.count();
         Long totalCategories = categoryRepository.count();
         Long totalViews = getTotalViews();
+        Long pendingComments = commentService.getPendingCommentsCount();
         
         // Thống kê video theo trạng thái
         Long videosUploading = videoRepository.countByStatus(VideoStatus.UPLOADING);
@@ -59,6 +61,7 @@ public class DashboardService {
                 .totalVideos(totalVideos)
                 .totalCategories(totalCategories)
                 .totalViews(totalViews)
+                .pendingComments(pendingComments)
                 .videosUploading(videosUploading)
                 .videosProcessing(videosProcessing)
                 .videosReady(videosReady)

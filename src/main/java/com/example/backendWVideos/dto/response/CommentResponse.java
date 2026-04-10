@@ -16,9 +16,18 @@ public class CommentResponse {
     String content;
     String userId;
     String userFullName;
+    String userAvatar;
     String videoId;
     String parentId;
     List<CommentResponse> replies;
     LocalDateTime createdAt;
     Boolean isDeleted;
+    
+    // Moderation fields
+    String status;  // PENDING, APPROVED, REJECTED
+    String moderatedById;
+    String moderatedByName;
+    LocalDateTime moderatedAt;
+    String rejectionReason;
+    Boolean canView;  // Frontend dùng để quyết định hiện/ẩn content
 }

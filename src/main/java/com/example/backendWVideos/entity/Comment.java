@@ -49,6 +49,22 @@ public class Comment {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
     
+    // Moderation fields
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    @Builder.Default
+    private com.example.backendWVideos.enums.CommentStatus status = com.example.backendWVideos.enums.CommentStatus.PENDING;
+    
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "moderated_by")
+    private User moderatedBy;
+    
+    @Column(name = "moderated_at")
+    private LocalDateTime moderatedAt;
+    
+    @Column(name = "rejection_reason")
+    private String rejectionReason;
+    
     @Column(name = "is_deleted")
     @Builder.Default
     private Boolean isDeleted = false;
