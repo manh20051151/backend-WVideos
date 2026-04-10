@@ -1,5 +1,6 @@
 package com.example.backendWVideos.dto.response;
 
+import com.example.backendWVideos.enums.VideoReactionType;
 import com.example.backendWVideos.enums.VideoStatus;
 import lombok.*;
 
@@ -26,7 +27,9 @@ public class VideoResponse {
     private Long fileSize;
     private Long duration;
     private Long views;
-    private Long favoritesCount;
+    private Long likeCount;
+    private Long dislikeCount;
+    private VideoReactionType userReaction;
     private Long commentsCount;
     private VideoStatus status;
     private Boolean isPublic;

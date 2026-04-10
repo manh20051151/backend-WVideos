@@ -15,6 +15,7 @@ import com.example.backendWVideos.mapper.VideoMapper;
 import com.example.backendWVideos.repository.UserRepository;
 import com.example.backendWVideos.repository.VideoRepository;
 import com.example.backendWVideos.repository.SubscriptionRepository;
+import com.example.backendWVideos.repository.VideoReactionRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -49,6 +50,7 @@ public class VideoService {
     private final CategoryService categoryService;
     private final VideoUploadAsyncService videoUploadAsyncService;
     private final SubscriptionRepository subscriptionRepository;
+    private final VideoReactionRepository videoReactionRepository;
 
     /**
      * Init upload - Tạo video record và lấy upload server
@@ -522,8 +524,18 @@ public class VideoService {
                 boolean isSubscribed = subscriptionRepository.existsBySubscriberIdAndChannelId(
                         currentUser.getId(), video.getUser().getId());
                 response.setIsSubscribed(isSubscribed);
+                
+                // Lấy reaction của user
+                var userReaction = videoReactionRepository.findByUserIdAndVideoId(currentUser.getId(), videoId);
+                userReaction.ifPresent(r -> response.setUserReaction(r.getReactionType()));
             }
         }
+        
+        // Lấy số lượng reactions
+        long likeCount = videoReactionRepository.countByVideoIdAndReactionType(videoId, com.example.backendWVideos.enums.VideoReactionType.LIKE);
+        long dislikeCount = videoReactionRepository.countByVideoIdAndReactionType(videoId, com.example.backendWVideos.enums.VideoReactionType.DISLIKE);
+        response.setLikeCount(likeCount);
+        response.setDislikeCount(dislikeCount);
         
         return response;
     }
