@@ -1,5 +1,6 @@
 package com.example.backendWVideos.mapper;
 
+import com.example.backendWVideos.config.CdnProperties;
 import com.example.backendWVideos.dto.response.CategoryResponse;
 import com.example.backendWVideos.dto.response.VideoResponse;
 import com.example.backendWVideos.entity.Video;
@@ -11,6 +12,12 @@ import java.util.stream.Collectors;
 
 @Component
 public class VideoMapper {
+    
+    private final CdnProperties cdnProperties;
+
+    public VideoMapper(CdnProperties cdnProperties) {
+        this.cdnProperties = cdnProperties;
+    }
     
     /**
      * Chuyển đổi Video entity sang VideoResponse DTO
@@ -29,8 +36,8 @@ public class VideoMapper {
                 .embedUrl(video.getEmbedUrl())
                 .protectedEmbedUrl(video.getProtectedEmbedUrl())
                 .protectedDownloadUrl(video.getProtectedDownloadUrl())
-                .thumbnailUrl(video.getThumbnailUrl())
-                .splashImageUrl(video.getSplashImageUrl())
+                .thumbnailUrl(cdnProperties.convertThumbnailUrl(video.getThumbnailUrl()))
+                .splashImageUrl(cdnProperties.convertThumbnailUrl(video.getSplashImageUrl()))
                 .fileSize(video.getFileSize())
                 .duration(video.getDuration())
                 .views(video.getViews())

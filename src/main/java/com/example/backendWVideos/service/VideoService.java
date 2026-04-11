@@ -140,18 +140,16 @@ public class VideoService {
                     video.setProtectedEmbedUrl(result.get("protected_embed").toString());
                 }
                 
-                // Xử lý thumbnail
+                // Xử lý thumbnail - lưu domain gốc
                 if (video.getThumbnailUrl() == null || video.getThumbnailUrl().isEmpty()) {
                     if (result.get("single_img") != null) {
-                        String thumbnailUrl = result.get("single_img").toString();
-                        video.setThumbnailUrl(thumbnailUrl.replace("img.doodcdn.io", "thumbcdn.com"));
+                        video.setThumbnailUrl(result.get("single_img").toString());
                     }
                 }
                 
-                // Splash image
+                // Splash image - lưu domain gốc
                 if (result.get("splash_img") != null) {
-                    String splashUrl = result.get("splash_img").toString();
-                    video.setSplashImageUrl(splashUrl.replace("img.doodcdn.io", "thumbcdn.com"));
+                    video.setSplashImageUrl(result.get("splash_img").toString());
                 }
                 
                 // Metadata
@@ -235,18 +233,16 @@ public class VideoService {
                     video.setProtectedEmbedUrl(foundFile.get("protected_embed").toString());
                 }
                 
-                // Xử lý thumbnail
+                // Xử lý thumbnail - lưu domain gốc
                 if (video.getThumbnailUrl() == null || video.getThumbnailUrl().isEmpty()) {
                     if (foundFile.get("single_img") != null) {
-                        String thumbnailUrl = foundFile.get("single_img").toString();
-                        video.setThumbnailUrl(thumbnailUrl.replace("img.doodcdn.io", "thumbcdn.com"));
+                        video.setThumbnailUrl(foundFile.get("single_img").toString());
                     }
                 }
                 
-                // Splash image
+                // Splash image - lưu domain gốc
                 if (foundFile.get("splash_img") != null) {
-                    String splashUrl = foundFile.get("splash_img").toString();
-                    video.setSplashImageUrl(splashUrl.replace("img.doodcdn.io", "thumbcdn.com"));
+                    video.setSplashImageUrl(foundFile.get("splash_img").toString());
                 }
                 
                 // Metadata
@@ -726,19 +722,13 @@ public class VideoService {
                         video.setStatus(canPlay == 1 ? VideoStatus.READY : VideoStatus.PROCESSING);
                     }
                     
-                    // Cập nhật thumbnails nếu có
+                    // Cập nhật thumbnails nếu có - lưu domain gốc
                     if (result.get("single_img") != null) {
-                        String thumbnailUrl = result.get("single_img").toString();
-                        // Thay thế domain img.doodcdn.io bằng thumbcdn.com
-                        thumbnailUrl = thumbnailUrl.replace("img.doodcdn.io", "thumbcdn.com");
-                        video.setThumbnailUrl(thumbnailUrl);
+                        video.setThumbnailUrl(result.get("single_img").toString());
                     }
                     
                     if (result.get("splash_img") != null) {
-                        String splashUrl = result.get("splash_img").toString();
-                        // Thay thế domain img.doodcdn.io bằng thumbcdn.com
-                        splashUrl = splashUrl.replace("img.doodcdn.io", "thumbcdn.com");
-                        video.setSplashImageUrl(splashUrl);
+                        video.setSplashImageUrl(result.get("splash_img").toString());
                     }
                     
                     // Cập nhật timestamp sync

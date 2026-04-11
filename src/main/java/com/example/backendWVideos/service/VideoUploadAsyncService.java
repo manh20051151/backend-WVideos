@@ -76,16 +76,16 @@ public class VideoUploadAsyncService {
             video.setProtectedEmbedUrl(uploadResult.getProtectedEmbed());
             video.setProtectedDownloadUrl(uploadResult.getProtectedDl());
 
-            // Xử lý thumbnail
+            // Xử lý thumbnail - lưu domain gốc
             if (customThumbnailUrl != null && !customThumbnailUrl.isEmpty()) {
                 log.info("🖼️ [Async - New Thread] Sử dụng thumbnail tùy chỉnh: {}", customThumbnailUrl);
             } else if (uploadResult.getSingleImg() != null) {
-                video.setThumbnailUrl(uploadResult.getSingleImg().replace("img.doodcdn.io", "thumbcdn.com"));
+                video.setThumbnailUrl(uploadResult.getSingleImg());
             }
 
-            // Lưu splash image
+            // Lưu splash image - lưu domain gốc
             if (uploadResult.getSplashImg() != null) {
-                video.setSplashImageUrl(uploadResult.getSplashImg().replace("img.doodcdn.io", "thumbcdn.com"));
+                video.setSplashImageUrl(uploadResult.getSplashImg());
             }
 
             // Cập nhật metadata

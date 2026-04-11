@@ -111,6 +111,11 @@ doodstream:
   file-info-endpoint: /file/info
   file-list-endpoint: /file/list
 
+# CDN Configuration
+cdn:
+  thumbnail-domain: ${env.CDN_THUMBNAIL_DOMAIN:img.doodcdn.io}
+  public-domain: ${env.CDN_PUBLIC_DOMAIN:ticdn.net}
+
 
 
 
