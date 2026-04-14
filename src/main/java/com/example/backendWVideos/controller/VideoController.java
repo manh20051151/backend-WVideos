@@ -11,6 +11,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
+import org.springframework.security.access.prepost.PreAuthorize;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -26,6 +27,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.List;
 
 @RestController
 @RequestMapping("/videos")
@@ -247,6 +249,7 @@ public class VideoController {
 
     @Operation(summary = "Increment views", description = "Tăng lượt xem video")
     @PostMapping("/{videoId}/view")
+    @PreAuthorize("permitAll()")
     public ApiResponse<Void> incrementViews(
             @PathVariable String videoId,
             HttpServletRequest request
@@ -364,5 +367,21 @@ public class VideoController {
             sb.append(chars.charAt(random.nextInt(chars.length())));
         }
         return sb.toString();
+    }
+
+    @Operation(summary = "Get related videos", description = "Lấy danh sách video liên quan")
+    @GetMapping("/{videoId}/related")
+    public ApiResponse<Page<VideoResponse>> getRelatedVideos(
+            @PathVariable String videoId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        Pageable pageable = PageRequest.of(page, size);
+        // Cho phép người dùng không đăng nhập xem video liên quan
+        Page<VideoResponse> videos = videoService.getRelatedVideos(videoId, pageable);
+
+        return ApiResponse.<Page<VideoResponse>>builder()
+                .result(videos)
+                .build();
     }
 }

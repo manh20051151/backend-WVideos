@@ -48,10 +48,14 @@ public class SecurityConfig {
         "/videos/public",  // Public videos list
         "/videos/all",  // All videos list
         "/videos/*",  // Video details (GET only)
-        "/videos/*/view",   // Increment views
         "/videos/*/stream-url",  // Stream URL proxy
         "/videos/*/comments",  // Comments
+        "/videos/*/related",  // Related videos
         "/categories"      // Public categories
+    };
+
+    private final String[] PUBLIC_ENDPOINTS_POST = {
+        "/videos/*/view",   // Increment views
     };
 
     private final String[] PUBLIC_ENDPOINTS_ALL = {
@@ -83,17 +87,18 @@ public class SecurityConfig {
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(request ->
                 request.requestMatchers(HttpMethod.POST, PUBLIC_ENDPOINTS).permitAll()
+                    .requestMatchers(HttpMethod.POST, PUBLIC_ENDPOINTS_POST).permitAll()
                     .requestMatchers(HttpMethod.GET, PUBLIC_ENDPOINTS_GET).permitAll()
                     .requestMatchers("/auth/**").permitAll()
                         .requestMatchers("/socket.io/**").permitAll()
                         .requestMatchers(PUBLIC_ENDPOINTS_ALL).permitAll()
                         // Swagger UI endpoints - must be permitAll
                         .requestMatchers(
-                            "/swagger-ui.html", 
-                            "/swagger-ui/**", 
-                            "/v3/api-docs/**", 
+                            "/swagger-ui.html",
+                            "/swagger-ui/**",
+                            "/v3/api-docs/**",
                             "/api-docs/**",
-                            "/swagger-resources/**", 
+                            "/swagger-resources/**",
                             "/webjars/**"
                         ).permitAll()
                     .requestMatchers(HttpMethod.GET, "/users/notoken/**").permitAll()

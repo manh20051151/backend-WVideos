@@ -11,6 +11,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -73,8 +74,11 @@ public interface VideoRepository extends JpaRepository<Video, String> {
     Page<Video> findByUserIdAndStatusNot(String userId, VideoStatus status, Pageable pageable);
     
     @EntityGraph(attributePaths = {"categories", "user", "tags"})
+    Page<Video> findByUserIdAndStatusAndIsPublicTrue(String userId, VideoStatus status, Pageable pageable);
+
+    @EntityGraph(attributePaths = {"categories", "user", "tags"})
     Page<Video> findByUserIdAndStatus(String userId, VideoStatus status, Pageable pageable);
-    
+
     Long countByUserId(String userId);
     
     Long countByUserIdAndStatus(String userId, VideoStatus status);
@@ -95,4 +99,19 @@ public interface VideoRepository extends JpaRepository<Video, String> {
     // Lấy tổng lượt xem của user
     @Query("SELECT COALESCE(SUM(v.views), 0) FROM Video v WHERE v.user.id = :userId AND v.status != :status")
     Long getTotalViewsByUserId(@Param("userId") String userId, @Param("status") VideoStatus status);
+
+    @EntityGraph(attributePaths = {"categories", "user", "tags"})
+    @Query("SELECT v FROM Video v WHERE v.id != :currentVideoId AND v.status = 'READY' AND v.isPublic = true " +
+           "AND (EXISTS (SELECT c FROM v.categories c WHERE c.id IN :categoryIds) OR " +
+           "EXISTS (SELECT t FROM v.tags t WHERE t IN :tags) OR v.user.id = :videoUserId) " +
+           "ORDER BY " +
+           "CASE WHEN v.user.id = :videoUserId THEN 1 ELSE 0 END DESC, " +
+           "CASE WHEN EXISTS (SELECT c FROM v.categories c WHERE c.id IN :categoryIds) THEN 1 ELSE 0 END DESC, " +
+           "CASE WHEN EXISTS (SELECT t FROM v.tags t WHERE t IN :tags) THEN 1 ELSE 0 END DESC, " +
+           "v.views DESC, v.createdAt DESC")
+    Page<Video> findRelatedVideos(@Param("currentVideoId") String currentVideoId,
+                                 @Param("videoUserId") String videoUserId,
+                                 @Param("categoryIds") List<String> categoryIds,
+                                 @Param("tags") List<String> tags,
+                                 Pageable pageable);
 }

@@ -594,7 +594,7 @@ public class UserService {
         long subscriberCount = subscriptionRepository.countByChannelId(userId);
         
         // Lấy danh sách video (public only, không bị xóa)
-        Page<Video> videos = videoRepository.findByUserIdAndStatus(userId, VideoStatus.READY, PageRequest.of(0, 20));
+        Page<Video> videos = videoRepository.findByUserIdAndStatusAndIsPublicTrue(userId, VideoStatus.READY, PageRequest.of(0, 20));
         List<VideoResponse> videoResponses = videos.getContent().stream()
                 .map(videoMapper::toVideoResponse)
                 .toList();

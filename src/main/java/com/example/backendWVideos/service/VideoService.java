@@ -30,9 +30,13 @@ import org.springframework.web.multipart.MultipartFile;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.io.File;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
+
+import com.example.backendWVideos.entity.Category;
 
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.transaction.annotation.Propagation;
@@ -801,5 +805,53 @@ public class VideoService {
     private Object extractCanplayFromList(Map<String, Object> testResult) {
         Map<String, Object> foundFile = (Map<String, Object>) testResult.get("foundInList");
         return foundFile != null ? foundFile.get("canplay") : null;
+    }
+
+    /**
+     * Lấy danh sách video liên quan
+     */
+    @Transactional(readOnly = true)
+    public Page<VideoResponse> getRelatedVideos(String currentVideoId, Pageable pageable) {
+        Video currentVideo = videoRepository.findById(currentVideoId)
+            .orElseThrow(() -> new AppException(ErrorCode.VIDEO_NOT_FOUND));
+
+        // Cho phép người dùng không đăng nhập xem video liên quan của video public
+        if (currentVideo.getStatus() != VideoStatus.READY || !currentVideo.getIsPublic()) {
+            throw new AppException(ErrorCode.VIDEO_NOT_FOUND);
+        }
+
+        List<String> categoryIds = currentVideo.getCategories().stream()
+            .map(Category::getId)
+            .collect(Collectors.toList());
+
+        List<String> tags = new ArrayList<>(currentVideo.getTags());
+
+        log.info("🔍 Tìm video liên quan cho video: {}, categories: {}, tags: {}",
+                currentVideoId, categoryIds.size(), tags.size());
+
+        // Nếu không có category hoặc tag, tìm theo cùng user
+        if ((categoryIds.isEmpty() && tags.isEmpty())) {
+            Page<Video> userVideos = videoRepository.findByUserIdAndStatusAndIsPublicTrue(currentVideo.getUser().getId(), VideoStatus.READY, pageable);
+            log.info("📺 Tìm thấy {} video cùng user", userVideos.getTotalElements());
+            return userVideos.map(videoMapper::toVideoResponse);
+        }
+
+        Page<Video> relatedVideos = videoRepository.findRelatedVideos(
+            currentVideoId,
+            currentVideo.getUser().getId(),
+            categoryIds,
+            tags,
+            pageable);
+
+        log.info("📺 Tìm thấy {} video liên quan", relatedVideos.getTotalElements());
+
+        // Nếu không tìm thấy video liên quan, trả về video public mới nhất
+        if (relatedVideos.getTotalElements() == 0) {
+            log.info("📺 Không tìm thấy video liên quan, trả về video public mới nhất");
+            return videoRepository.findPublicVideosNative(pageable)
+                .map(videoMapper::toVideoResponse);
+        }
+
+        return relatedVideos.map(videoMapper::toVideoResponse);
     }
 }

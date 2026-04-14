@@ -2,7 +2,9 @@
   "permissions": {
     "allow": [
       "Skill(update-config)",
-      "Skill(update-config:*)"
+      "Skill(update-config:*)",
+      "Bash(curl -s \"http://localhost:8080/api/videos/c32094c5-5093-4f3c-b4f4-ad087228bd10/related?page=0&size=6\")",
+      "Bash(./mvnw compile:*)"
     ]
   }
 }
