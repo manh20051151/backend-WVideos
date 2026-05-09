@@ -6,7 +6,8 @@ spring:
   datasource:
     url: ${env.DB_URL:jdbc:mysql://localhost:3306/db_wvideos?createDatabaseIfNotExist=true}
     username: ${env.DB_USERNAME:root}
-    password: ${env.DB_PASSWORD:sapassword}
+    #    password: ${env.DB_PASSWORD:sapassword}
+    password: 
     driver-class-name: com.mysql.cj.jdbc.Driver
   
   # JPA/Hibernate Configuration
