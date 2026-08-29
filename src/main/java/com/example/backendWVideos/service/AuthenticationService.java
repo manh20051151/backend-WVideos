@@ -86,6 +86,11 @@ public class AuthenticationService {
             throw new AppException(ErrorCode.USER_LOCKED);
         }
 
+        // Tài khoản đăng nhập bằng Google (hoặc social) không có password -> không cho login bằng password
+        if (user.getPassword() == null || user.getPassword().isEmpty()) {
+            throw new AppException(ErrorCode.UNAUTHENTICATED);
+        }
+
         PasswordEncoder passwordEncoder = new BCryptPasswordEncoder(10);
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
             throw new AppException(ErrorCode.UNAUTHENTICATED);
@@ -227,6 +232,11 @@ public class AuthenticationService {
 
         if (user.isLocked()) {
             throw new AppException(ErrorCode.USER_LOCKED);
+        }
+
+        // Tài khoản đăng nhập bằng Google (hoặc social) không có password -> không cho login bằng password
+        if (user.getPassword() == null || user.getPassword().isEmpty()) {
+            throw new AppException(ErrorCode.UNAUTHENTICATED);
         }
 
         PasswordEncoder passwordEncoder = new BCryptPasswordEncoder(10);

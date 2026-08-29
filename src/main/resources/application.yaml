@@ -4,10 +4,9 @@ spring:
   
   # Database Configuration
   datasource:
-    url: ${env.DB_URL:jdbc:mysql://localhost:3306/db_wvideos?createDatabaseIfNotExist=true}
-    username: ${env.DB_USERNAME:root}
-    #    password: ${env.DB_PASSWORD:sapassword}
-    password: 
+    url: ${DB_URL:jdbc:mysql://localhost:3306/db_wvideos?createDatabaseIfNotExist=true}
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:}
     driver-class-name: com.mysql.cj.jdbc.Driver
   
   # JPA/Hibernate Configuration
@@ -34,10 +33,10 @@ spring:
   # Redis Configuration
   data:
     redis:
-      host: ${env.REDIS_HOST:localhost}
-      port: ${env.REDIS_PORT:6379}
-      password: ${env.REDIS_PASSWORD:}
-      database: ${env.REDIS_DATABASE:0}
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      database: ${REDIS_DATABASE:0}
       timeout: 2000ms
       lettuce:
         pool:
@@ -52,8 +51,8 @@ spring:
       client:
         registration:
           google:
-            client-id: 1014693057086-2qkmf1il6u8bddlmhsgfcmfnpjdmlpc8.apps.googleusercontent.com
-            client-secret: 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
+            client-id: ${GOOGLE_CLIENT_ID:1014693057086-2qkmf1il6u8bddlmhsgfcmfnpjdmlpc8.apps.googleusercontent.com}
+            client-secret: ${GOOGLE_CLIENT_SECRET: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}
             redirect-uri: "{baseUrl}/oauth2/callback/{registrationId}"
             scope:
               - email
@@ -69,15 +68,15 @@ spring:
             jwk-set-uri: https://www.googleapis.com/oauth2/v3/certs
       resourceserver:
         jwt:
-          issuer-uri: http://localhost:8080/api
+          issuer-uri: http://localhost:8081/api
           jwk-set-uri: ${spring.security.oauth2.resourceserver.jwt.issuer-uri}/oauth2/jwks
   
   # Email Configuration (Gmail)
   mail:
-    host: smtp.gmail.com
-    port: 587
-    username: nguyenvietmanh1409@gmail.com
-    password: cjts ypre fugz hrqh
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:nguyenvietmanh1409@gmail.com}
+    password: ${MAIL_PASSWORD:}
     properties:
       mail:
         smtp:
@@ -91,22 +90,22 @@ spring:
 
 # JWT Configuration
 jwt:
-  signerKey: ${env.JWT_SIGNER_KEY:N/qa57r32pqMpmi5PxhHdGMVCI+MgTXPiw83/20xI56B1ij3mMgzpckvznpICkbj}
-  valid-duration: ${env.JWT_VALID_DURATION:172800} # 2 day in seconds
-  refreshable-duration: ${env.JWT_REFRESHABLE_DURATION:604800} # 7 day in seconds
+  signerKey: ${JWT_SIGNER_KEY:N/qa57r32pqMpmi5PxhHdGMVCI+MgTXPiw83/20xI56B1ij3mMgzpckvznpICkbj}
+  valid-duration: ${JWT_VALID_DURATION:172800} # 2 day in seconds
+  refreshable-duration: ${JWT_REFRESHABLE_DURATION:604800} # 7 day in seconds
 
 # Application Configuration
 # Sepay Configuration
 app:
-  frontend-url: ${env.FRONTEND_URL:http://localhost:3000}
+  frontend-url: ${FRONTEND_URL:http://localhost:3000}
   sepay:
-    api-url: https://my.sepay.vn/userapi/transactions/list
-    account-number: "0375000169"
-    api-token: "HG9DYJZHSEJPPLR5IYKB1DODLN68JAINR2UHAVSZQB70ONYXFEKQT34DNWJSTAW0"
+    api-url: ${SEPAY_API_URL:https://my.sepay.vn/userapi/transactions/list}
+    account-number: ${SEPAY_ACCOUNT_NUMBER:0375000169}
+    api-token: ${SEPAY_API_TOKEN:HG9DYJZHSEJPPLR5IYKB1DODLN68JAINR2UHAVSZQB70ONYXFEKQT34DNWJSTAW0}
 
 # DoodStream Configuration
 doodstream:
-  api-key: ${env.DOODSTREAM_API_KEY:550224nz0x44aku5y80cv5}
+  api-key: ${DOODSTREAM_API_KEY:550224nz0x44aku5y80cv5}
   api-base-url: https://doodapi.co/api
   upload-server-endpoint: /upload/server
   file-info-endpoint: /file/info
@@ -114,8 +113,8 @@ doodstream:
 
 # CDN Configuration
 cdn:
-  thumbnail-domain: ${env.CDN_THUMBNAIL_DOMAIN:img.doodcdn.io}
-  public-domain: ${env.CDN_PUBLIC_DOMAIN:ticdn.net}
+  thumbnail-domain: ${CDN_THUMBNAIL_DOMAIN:img.doodcdn.io}
+  public-domain: ${CDN_PUBLIC_DOMAIN:ticdn.net}
 
 
 
@@ -202,7 +201,7 @@ logging:
 
 # Server Configuration
 server:
-  port: 8080
+  port: 8081
   servlet:
     context-path: /api
   error:

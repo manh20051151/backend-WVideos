@@ -375,26 +375,37 @@ public class UserService {
         }
     }
 
-//    @CircuitBreaker(name = "registration", fallbackMethod = "registrationFallback")
-    @RateLimiter(name = "registration")
-    @Retry(name = "registration")
     public void startRegistration(UserCreateRequest request) {
-        // Kiểm tra email
-        if (userRepository.existsByEmail(request.getEmail()) || 
-            pendingRegistrationRepository.existsByEmail(request.getEmail())) {
+        // Kiểm tra user đã tồn tại
+        if (userRepository.existsByEmail(request.getEmail())) {
             throw new AppException(ErrorCode.EMAIL_EXISTED);
         }
 
-        // Tạo pending registration
-        PendingRegistration registration = PendingRegistration.builder()
-                .password(passwordEncoder.encode(request.getPassword()))
-                .email(request.getEmail())
-                .authProvider(AuthProvider.LOCAL)
-                .numberPhone(request.getNumberPhone())
-                .fullName(request.getFullName())
-                .token(UUID.randomUUID().toString())
-                .expiryDate(LocalDateTime.now().plusMinutes(expirationMinutes))
-                .build();
+        // Nếu đã có pending registration chưa xác nhận -> cập nhật (nếu hết hạn) và gửi lại email
+        // thay vì báo lỗi (tránh lỗi dương tính giả khi retry)
+        PendingRegistration registration;
+        Optional<PendingRegistration> existing = pendingRegistrationRepository.findByEmail(request.getEmail());
+        if (existing.isPresent()) {
+            registration = existing.get();
+            if (registration.isExpired()) {
+                registration.setToken(UUID.randomUUID().toString());
+                registration.setExpiryDate(LocalDateTime.now().plusMinutes(expirationMinutes));
+                registration.setPassword(passwordEncoder.encode(request.getPassword()));
+                registration.setNumberPhone(request.getNumberPhone());
+                registration.setFullName(request.getFullName());
+                registration.setConfirmed(false);
+            }
+        } else {
+            registration = PendingRegistration.builder()
+                    .password(passwordEncoder.encode(request.getPassword()))
+                    .email(request.getEmail())
+                    .authProvider(AuthProvider.LOCAL)
+                    .numberPhone(request.getNumberPhone())
+                    .fullName(request.getFullName())
+                    .token(UUID.randomUUID().toString())
+                    .expiryDate(LocalDateTime.now().plusMinutes(expirationMinutes))
+                    .build();
+        }
 
         pendingRegistrationRepository.save(registration);
         sendConfirmationEmail(registration);
@@ -403,28 +414,30 @@ public class UserService {
     @CircuitBreaker(name = "emailSending", fallbackMethod = "emailSendingFallback")
     @Retry(name = "emailSending")
     private void sendConfirmationEmail(PendingRegistration registration) {
+        String confirmationUrl = frontendUrl + "/confirm-registration?token=" + registration.getToken();
+        String emailContent = String.format("""
+            <h2>Xác nhận đăng ký tài khoản</h2>
+            <p>Xin chào %s,</p>
+            <p>Vui lòng click vào link bên dưới để hoàn tất đăng ký tài khoản:</p>
+            <a href="%s">Xác nhận đăng ký</a>
+            <p>Link này sẽ hết hạn sau %d phút.</p>
+            <p>Nếu bạn không yêu cầu đăng ký tài khoản, vui lòng bỏ qua email này.</p>
+            """, registration.getEmail(), confirmationUrl, expirationMinutes);
+
         try {
             MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
-            
+
             helper.setFrom("nguyenvietmanh1409@gmail.com");
             helper.setTo(registration.getEmail());
             helper.setSubject("Xác nhận đăng ký tài khoản");
-            
-            String confirmationUrl = frontendUrl + "/confirm-registration?token=" + registration.getToken();
-            String emailContent = String.format("""
-                <h2>Xác nhận đăng ký tài khoản</h2>
-                <p>Xin chào %s,</p>
-                <p>Vui lòng click vào link bên dưới để hoàn tất đăng ký tài khoản:</p>
-                <a href="%s">Xác nhận đăng ký</a>
-                <p>Link này sẽ hết hạn sau %d phút.</p>
-                <p>Nếu bạn không yêu cầu đăng ký tài khoản, vui lòng bỏ qua email này.</p>
-                """, registration.getEmail(), confirmationUrl, expirationMinutes);
-            
             helper.setText(emailContent, true);
             mailSender.send(message);
-        } catch (MessagingException e) {
-            throw new AppException(ErrorCode.EMAIL_SENDING_FAILED);
+        } catch (Exception e) {
+            // SMTP thất bại (vd: sai Gmail App Password) -> không chặn đăng ký,
+            // in toàn bộ email ra console để dev xác nhận thủ công bằng link.
+            log.warn("Email xác nhận KHÔNG gửi được ({}) - dùng nội dung dưới đây thay cho email thật:", e.getMessage());
+            log.warn("To: {}\nSubject: Xác nhận đăng ký tài khoản\n\n{}", registration.getEmail(), emailContent);
         }
     }
 
