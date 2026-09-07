@@ -111,6 +111,15 @@ doodstream:
   file-info-endpoint: /file/info
   file-list-endpoint: /file/list
 
+# Streamtape Configuration
+streamtape:
+  api-login: ${STREAMTAPE_API_LOGIN:1bc0e8d9e90abc1b1583}
+  api-key: ${STREAMTAPE_API_KEY:lwKJ9qWeVMF73RY}
+  api-base-url: https://api.streamtape.com
+  upload-endpoint: /file/ul
+  file-info-endpoint: /file/info
+  getsplash-endpoint: /file/getsplash
+
 # CDN Configuration
 cdn:
   thumbnail-domain: ${CDN_THUMBNAIL_DOMAIN:img.doodcdn.io}

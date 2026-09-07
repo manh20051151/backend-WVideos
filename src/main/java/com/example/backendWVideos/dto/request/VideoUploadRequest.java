@@ -34,4 +34,7 @@ public class VideoUploadRequest {
     
     // URL thumbnail tùy chọn (upload lên imgbb)
     private String thumbnailUrl;
+
+    // Provider upload: "streamtape" (mặc định) hoặc "doodstream"
+    private String provider;
 }

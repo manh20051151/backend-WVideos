@@ -79,6 +79,13 @@ public interface VideoRepository extends JpaRepository<Video, String> {
     @EntityGraph(attributePaths = {"categories", "user", "tags"})
     Page<Video> findByUserIdAndStatus(String userId, VideoStatus status, Pageable pageable);
 
+    // Lấy các video đang xử lý của Streamtape để scheduler re-check trạng thái convert
+    @EntityGraph(attributePaths = {"user"})
+    Page<Video> findByStatusAndProvider(VideoStatus status, String provider, Pageable pageable);
+
+    @EntityGraph(attributePaths = {"user"})
+    Page<Video> findByStatus(VideoStatus status, Pageable pageable);
+
     Long countByUserId(String userId);
     
     Long countByUserIdAndStatus(String userId, VideoStatus status);

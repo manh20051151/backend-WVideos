@@ -49,10 +49,12 @@ public class VideoService {
     private final VideoRepository videoRepository;
     private final UserRepository userRepository;
     private final DoodStreamService doodStreamService;
+    private final StreamtapeService streamtapeService;
     private final VideoMapper videoMapper;
     private final RedisTemplate<String, String> redisTemplate;
     private final CategoryService categoryService;
     private final VideoUploadAsyncService videoUploadAsyncService;
+    private final StreamtapeUploadAsyncService streamtapeUploadAsyncService;
     private final SubscriptionRepository subscriptionRepository;
     private final VideoReactionRepository videoReactionRepository;
 
@@ -86,9 +88,9 @@ public class VideoService {
         video = videoRepository.save(video);
         log.info("📹 Tạo video record: {}", video.getId());
 
-        // Lấy upload server từ DoodStream
-        String uploadServerUrl = doodStreamService.getUploadServer();
-        log.info("🌐 Upload server: {}", uploadServerUrl);
+        // Lấy upload URL từ Streamtape
+        String uploadServerUrl = streamtapeService.getUploadUrl();
+        log.info("🌐 Streamtape upload URL: {}", uploadServerUrl);
 
         // Tạo upload token (simple implementation)
         String uploadToken = java.util.UUID.randomUUID().toString();
@@ -123,57 +125,45 @@ public class VideoService {
             throw new AppException(ErrorCode.UNAUTHORIZED);
         }
 
-        // Lấy thông tin file từ DoodStream
-        Map<String, Object> fileInfo = doodStreamService.getFileInfo(fileCode);
-        
+        // Lấy thông tin file từ Streamtape
+        Map<String, Object> fileInfo = streamtapeService.getFileInfo(fileCode);
+
         if (fileInfo != null && fileInfo.get("result") != null) {
-            List<Map<String, Object>> results = (List<Map<String, Object>>) fileInfo.get("result");
-            
-            if (!results.isEmpty()) {
-                Map<String, Object> result = results.get(0);
-                
+            Map<String, Object> resultMap = (Map<String, Object>) fileInfo.get("result");
+            Map<String, Object> result = (Map<String, Object>) resultMap.get(fileCode);
+
+            if (result != null) {
                 // Cập nhật thông tin video
                 video.setFileCode(fileCode);
-                video.setDownloadUrl(result.get("download_url") != null ? result.get("download_url").toString() : "https://dood.to/d/" + fileCode);
-                video.setEmbedUrl("https://dood.to/e/" + fileCode);
-                
-                if (result.get("protected_dl") != null) {
-                    video.setProtectedDownloadUrl(result.get("protected_dl").toString());
-                }
-                if (result.get("protected_embed") != null) {
-                    video.setProtectedEmbedUrl(result.get("protected_embed").toString());
-                }
-                
-                // Xử lý thumbnail - lưu domain gốc
-                if (video.getThumbnailUrl() == null || video.getThumbnailUrl().isEmpty()) {
-                    if (result.get("single_img") != null) {
-                        video.setThumbnailUrl(result.get("single_img").toString());
-                    }
-                }
-                
-                // Splash image - lưu domain gốc
-                if (result.get("splash_img") != null) {
-                    video.setSplashImageUrl(result.get("splash_img").toString());
-                }
-                
+                video.setEmbedUrl("https://streamtape.com/e/" + fileCode);
+
                 // Metadata
                 if (result.get("size") != null) {
                     video.setFileSize(Long.parseLong(result.get("size").toString()));
                 }
-                if (result.get("length") != null) {
-                    video.setDuration(Long.parseLong(result.get("length").toString()));
+
+                // Status dựa trên trạng thái converted của Streamtape
+                boolean converted = result.get("converted") != null
+                        && Boolean.parseBoolean(result.get("converted").toString());
+                video.setStatus(converted ? VideoStatus.READY : VideoStatus.PROCESSING);
+
+                // Thumbnail từ splash image (Streamtape không trả ảnh trong info)
+                if (video.getThumbnailUrl() == null || video.getThumbnailUrl().isEmpty()) {
+                    try {
+                        String splash = streamtapeService.getSplashImage(fileCode);
+                        if (splash != null && !splash.isEmpty()) {
+                            video.setThumbnailUrl(splash);
+                            video.setSplashImageUrl(splash);
+                        }
+                    } catch (Exception e) {
+                        log.warn("⚠️ Không lấy được splash image Streamtape: {}", e.getMessage());
+                    }
                 }
-                
-                // Status
-                if (result.get("canplay") != null) {
-                    int canPlay = Integer.parseInt(result.get("canplay").toString());
-                    video.setStatus(canPlay == 1 ? VideoStatus.READY : VideoStatus.PROCESSING);
-                }
-                
+
                 video.setUploadedToDoodStreamAt(LocalDateTime.now());
-                
+
                 video = videoRepository.save(video);
-                log.info("✅ Complete upload thành công: {}", videoId);
+                log.info("✅ Complete upload (Streamtape) thành công: {}", videoId);
             }
         }
 
@@ -200,75 +190,69 @@ public class VideoService {
             throw new AppException(ErrorCode.UNAUTHORIZED);
         }
 
-        // Lấy danh sách file từ DoodStream
-        Map<String, Object> fileList = doodStreamService.getFileList();
-        
+        // Lấy danh sách file từ Streamtape
+        Map<String, Object> fileList = streamtapeService.getFileList();
+
         if (fileList != null && fileList.get("result") != null) {
             Map<String, Object> listResult = (Map<String, Object>) fileList.get("result");
             List<Map<String, Object>> files = (List<Map<String, Object>>) listResult.get("files");
-            
-            // Tìm file vừa upload (dựa trên title/filename và thời gian gần nhất)
+
+            // Tìm file vừa upload (dựa trên title/filename)
             String searchTitle = video.getTitle();
             Map<String, Object> foundFile = files.stream()
                     .filter(f -> {
-                        String fileTitle = f.get("title") != null ? f.get("title").toString() : "";
                         String fileName = f.get("name") != null ? f.get("name").toString() : "";
-                        return fileTitle.equalsIgnoreCase(searchTitle) || 
+                        return fileName.equalsIgnoreCase(searchTitle) ||
                                fileName.contains(filename) ||
                                filename.contains(fileName);
                     })
                     .findFirst()
                     .orElse(null);
-            
+
             if (foundFile != null) {
-                String fileCode = foundFile.get("file_code").toString();
-                log.info("✅ Tìm thấy file trên DoodStream: fileCode={}", fileCode);
-                
+                String fileCode = foundFile.get("linkid") != null
+                        ? foundFile.get("linkid").toString()
+                        : foundFile.get("file_code").toString();
+                log.info("✅ Tìm thấy file trên Streamtape: fileCode={}", fileCode);
+
                 // Cập nhật thông tin video
                 video.setFileCode(fileCode);
-                video.setDownloadUrl(foundFile.get("download_url") != null ? 
-                    foundFile.get("download_url").toString() : "https://dood.to/d/" + fileCode);
-                video.setEmbedUrl("https://dood.to/e/" + fileCode);
-                
-                if (foundFile.get("protected_dl") != null) {
-                    video.setProtectedDownloadUrl(foundFile.get("protected_dl").toString());
-                }
-                if (foundFile.get("protected_embed") != null) {
-                    video.setProtectedEmbedUrl(foundFile.get("protected_embed").toString());
-                }
-                
-                // Xử lý thumbnail - lưu domain gốc
-                if (video.getThumbnailUrl() == null || video.getThumbnailUrl().isEmpty()) {
-                    if (foundFile.get("single_img") != null) {
-                        video.setThumbnailUrl(foundFile.get("single_img").toString());
-                    }
-                }
-                
-                // Splash image - lưu domain gốc
-                if (foundFile.get("splash_img") != null) {
-                    video.setSplashImageUrl(foundFile.get("splash_img").toString());
-                }
-                
+                video.setEmbedUrl("https://streamtape.com/e/" + fileCode);
+
                 // Metadata
                 if (foundFile.get("size") != null) {
                     video.setFileSize(Long.parseLong(foundFile.get("size").toString()));
                 }
-                if (foundFile.get("length") != null) {
-                    video.setDuration(Long.parseLong(foundFile.get("length").toString()));
+
+                // Status dựa trên trạng thái convert (Streamtape: "converted" hoặc boolean)
+                boolean converted;
+                Object convertObj = foundFile.get("convert");
+                if (convertObj instanceof Boolean) {
+                    converted = (Boolean) convertObj;
+                } else {
+                    converted = convertObj != null && "converted".equalsIgnoreCase(convertObj.toString());
                 }
-                
-                // Status
-                if (foundFile.get("canplay") != null) {
-                    int canPlay = Integer.parseInt(foundFile.get("canplay").toString());
-                    video.setStatus(canPlay == 1 ? VideoStatus.READY : VideoStatus.PROCESSING);
+                video.setStatus(converted ? VideoStatus.READY : VideoStatus.PROCESSING);
+
+                // Thumbnail từ splash image (Streamtape không trả ảnh trong list)
+                if (video.getThumbnailUrl() == null || video.getThumbnailUrl().isEmpty()) {
+                    try {
+                        String splash = streamtapeService.getSplashImage(fileCode);
+                        if (splash != null && !splash.isEmpty()) {
+                            video.setThumbnailUrl(splash);
+                            video.setSplashImageUrl(splash);
+                        }
+                    } catch (Exception e) {
+                        log.warn("⚠️ Không lấy được splash image Streamtape: {}", e.getMessage());
+                    }
                 }
-                
+
                 video.setUploadedToDoodStreamAt(LocalDateTime.now());
-                
+
                 video = videoRepository.save(video);
-                log.info("✅ Complete upload by filename thành công: {}, fileCode: {}", videoId, fileCode);
+                log.info("✅ Complete upload by filename (Streamtape) thành công: {}, fileCode: {}", videoId, fileCode);
             } else {
-                log.warn("⚠️ Không tìm thấy file trên DoodStream với title: {}", searchTitle);
+                log.warn("⚠️ Không tìm thấy file trên Streamtape với title: {}", searchTitle);
                 // Vẫn trả về video nhưng status vẫn là UPLOADING
             }
         }
@@ -333,11 +317,24 @@ public class VideoService {
         // Flush để commit transaction ngay lập tức, đảm bảo async method tìm thấy video
         videoRepository.flush();
 
-        // Trigger async upload lên DoodStream - truyền file path thay vì bytes
-        videoUploadAsyncService.uploadToDoodStreamAsync(video.getId(), tempFilePath, file.getOriginalFilename(), request.getThumbnailUrl());
+        // Chọn provider upload (mặc định Streamtape)
+        com.example.backendWVideos.enums.VideoProvider provider =
+                com.example.backendWVideos.enums.VideoProvider.fromValue(request.getProvider());
+        video.setProvider(provider.getValue());
 
-        log.info("✅ === TRẢ VỀ NGAY === sau {}ms", (System.currentTimeMillis() - startTime));
-        // Trả về ngay lập tức, không đợi upload DoodStream
+        if (provider == com.example.backendWVideos.enums.VideoProvider.STREAMTAPE) {
+            // Trigger async upload lên Streamtape
+            streamtapeUploadAsyncService.uploadToStreamtapeAsync(
+                    video.getId(), tempFilePath, file.getOriginalFilename(), request.getThumbnailUrl());
+            log.info("✅ === TRẢ VỀ NGAY (Streamtape) === sau {}ms", (System.currentTimeMillis() - startTime));
+        } else {
+            // Trigger async upload lên DoodStream - truyền file path thay vì bytes
+            videoUploadAsyncService.uploadToDoodStreamAsync(
+                    video.getId(), tempFilePath, file.getOriginalFilename(), request.getThumbnailUrl());
+            log.info("✅ === TRẢ VỀ NGAY (DoodStream) === sau {}ms", (System.currentTimeMillis() - startTime));
+        }
+
+        // Trả về ngay lập tức, không đợi upload provider
         return videoMapper.toVideoResponse(video);
     }
     
@@ -699,47 +696,42 @@ public class VideoService {
         }
 
         try {
-            // Lấy thông tin từ DoodStream
-            Map<String, Object> fileInfo = doodStreamService.getFileInfo(video.getFileCode());
-            
+            // Lấy thông tin từ Streamtape
+            Map<String, Object> fileInfo = streamtapeService.getFileInfo(video.getFileCode());
+
             if (fileInfo != null && fileInfo.get("result") != null) {
-                List<Map<String, Object>> results = (List<Map<String, Object>>) fileInfo.get("result");
-                
-                if (!results.isEmpty()) {
-                    Map<String, Object> result = results.get(0);
-                    
+                Map<String, Object> resultMap = (Map<String, Object>) fileInfo.get("result");
+                Map<String, Object> result = (Map<String, Object>) resultMap.get(video.getFileCode());
+
+                if (result != null) {
                     // Cập nhật thông tin video
-                    if (result.get("views") != null) {
-                        video.setViews(Long.parseLong(result.get("views").toString()));
-                    }
-                    
                     if (result.get("size") != null) {
                         video.setFileSize(Long.parseLong(result.get("size").toString()));
                     }
-                    
-                    if (result.get("length") != null) {
-                        video.setDuration(Long.parseLong(result.get("length").toString()));
+
+                    if (result.get("converted") != null) {
+                        boolean converted = Boolean.parseBoolean(result.get("converted").toString());
+                        video.setStatus(converted ? VideoStatus.READY : VideoStatus.PROCESSING);
                     }
-                    
-                    if (result.get("canplay") != null) {
-                        int canPlay = Integer.parseInt(result.get("canplay").toString());
-                        video.setStatus(canPlay == 1 ? VideoStatus.READY : VideoStatus.PROCESSING);
+
+                    // Cập nhật thumbnail từ splash image
+                    if (video.getThumbnailUrl() == null || video.getThumbnailUrl().isEmpty()) {
+                        try {
+                            String splash = streamtapeService.getSplashImage(video.getFileCode());
+                            if (splash != null && !splash.isEmpty()) {
+                                video.setThumbnailUrl(splash);
+                                video.setSplashImageUrl(splash);
+                            }
+                        } catch (Exception e) {
+                            log.warn("⚠️ Không lấy được splash image Streamtape: {}", e.getMessage());
+                        }
                     }
-                    
-                    // Cập nhật thumbnails nếu có - lưu domain gốc
-                    if (result.get("single_img") != null) {
-                        video.setThumbnailUrl(result.get("single_img").toString());
-                    }
-                    
-                    if (result.get("splash_img") != null) {
-                        video.setSplashImageUrl(result.get("splash_img").toString());
-                    }
-                    
+
                     // Cập nhật timestamp sync
                     video.setLastSyncedAt(LocalDateTime.now());
-                    
+
                     video = videoRepository.save(video);
-                    log.info("✅ Sync thông tin video thành công: {} views", video.getViews());
+                    log.info("✅ Sync thông tin video (Streamtape) thành công");
                 }
             }
             

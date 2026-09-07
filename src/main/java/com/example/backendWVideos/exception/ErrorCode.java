@@ -93,6 +93,7 @@ public enum ErrorCode {
     VIDEO_NOT_FOUND(9601, "Không tìm thấy video", HttpStatus.NOT_FOUND),
     FILE_EMPTY(9602, "File không được để trống", HttpStatus.BAD_REQUEST),
     DOODSTREAM_ERROR(9603, "Lỗi kết nối DoodStream", HttpStatus.INTERNAL_SERVER_ERROR),
+    STREAMTAPE_ERROR(9605, "Lỗi kết nối Streamtape", HttpStatus.INTERNAL_SERVER_ERROR),
     UPLOAD_FAILED(9604, "Upload video thất bại", HttpStatus.INTERNAL_SERVER_ERROR),
     
     // Comment errors

@@ -111,6 +111,10 @@ public class Video {
     
     @Column(name = "uploaded_to_doodstream_at")
     private LocalDateTime uploadedToDoodStreamAt;
+
+    // Provider upload: "doodstream" hoặc "streamtape"
+    @Column(name = "provider")
+    private String provider = "doodstream";
     
     @Column(name = "last_synced_at")
     private LocalDateTime lastSyncedAt;
