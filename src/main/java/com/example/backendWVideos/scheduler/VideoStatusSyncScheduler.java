@@ -99,6 +99,20 @@ public class VideoStatusSyncScheduler {
                                 video.getId(), e.getMessage());
                     }
 
+                    // Lấy direct URL (mp4) luôn khi convert xong, lưu vào downloadUrl
+                    // để watch page phát trực tiếp không cần chờ 4-8s mỗi lần xem.
+                    try {
+                        String directUrl = streamtapeService.getDirectVideoUrl(video.getFileCode());
+                        if (directUrl != null && !directUrl.isEmpty()
+                                && (video.getDownloadUrl() == null || video.getDownloadUrl().isEmpty())) {
+                            video.setDownloadUrl(directUrl);
+                            log.info("✅ [Scheduler] Đã lưu direct URL cho video {}: {}", video.getId(), directUrl);
+                        }
+                    } catch (Exception e) {
+                        log.warn("⚠️ [Scheduler] Không lấy được direct URL cho video {}: {}",
+                                video.getId(), e.getMessage());
+                    }
+
                     log.info("✅ [Scheduler] Video {} đã convert xong -> READY", video.getId());
                 } else {
                     log.info("⏳ [Scheduler] Video {} vẫn đang convert...", video.getId());

@@ -37,7 +37,7 @@ public class Video {
     private String fileCode;
     
     // URLs từ DoodStream
-    @Column(name = "download_url")
+    @Column(name = "download_url", length = 2048)
     private String downloadUrl;
     
     @Column(name = "embed_url")
@@ -46,7 +46,7 @@ public class Video {
     @Column(name = "protected_embed_url")
     private String protectedEmbedUrl;
     
-    @Column(name = "protected_download_url")
+    @Column(name = "protected_download_url", length = 2048)
     private String protectedDownloadUrl;
     
     // Thumbnails

@@ -37,6 +37,7 @@ import java.util.List;
 public class VideoController {
 
     private final VideoService videoService;
+    private final com.example.backendWVideos.service.StreamtapeService streamtapeService;
     
     private RestTemplate getRestTemplate() {
         return new RestTemplate();
@@ -367,6 +368,51 @@ public class VideoController {
             sb.append(chars.charAt(random.nextInt(chars.length())));
         }
         return sb.toString();
+    }
+
+    @Operation(summary = "Get direct video URL from Streamtape", description = "Lấy direct video URL (mp4) từ Streamtape để tránh CORS ở frontend, tương tự DoodStream stream-url")
+    @GetMapping("/streamtape/stream-url")
+    public ApiResponse<String> getStreamtapeStreamUrl(@RequestParam String url) {
+        log.info("🎬 Đang tách direct video URL Streamtape từ: {}", url);
+
+        String fileId = extractStreamtapeFileId(url);
+        if (fileId == null) {
+            return ApiResponse.<String>builder()
+                    .message("URL Streamtape không hợp lệ")
+                    .result("")
+                    .build();
+        }
+
+        String directUrl = streamtapeService.getDirectVideoUrl(fileId);
+        if (directUrl == null || directUrl.isEmpty()) {
+            return ApiResponse.<String>builder()
+                    .message("Không lấy được direct URL từ Streamtape (có thể do hạn chế IP/geo của server)")
+                    .result("")
+                    .build();
+        }
+
+        return ApiResponse.<String>builder()
+                .result(directUrl)
+                .build();
+    }
+
+    /**
+     * Trích xuất file code Streamtape từ URL (hỗ trợ /e/, /v/, /embed/, hoặc chỉ mã)
+     */
+    private String extractStreamtapeFileId(String input) {
+        if (input == null || input.isBlank()) {
+            return null;
+        }
+        Matcher m = Pattern.compile("streamtape\\.com/(?:e|v|embed)/([A-Za-z0-9]+)", Pattern.CASE_INSENSITIVE)
+                .matcher(input);
+        if (m.find()) {
+            return m.group(1);
+        }
+        // Chỉ là mã thuần
+        if (input.matches("[A-Za-z0-9]+")) {
+            return input;
+        }
+        return null;
     }
 
     @Operation(summary = "Get related videos", description = "Lấy danh sách video liên quan")
