@@ -97,12 +97,17 @@ public class StreamtapeUploadAsyncService {
             }
 
             // Xử lý thumbnail - Streamtape không trả ảnh trong kết quả upload
-            if (customThumbnailUrl != null && !customThumbnailUrl.isEmpty()) {
-                log.info("🖼️ [Streamtape - New Thread] Sử dụng thumbnail tùy chỉnh: {}", customThumbnailUrl);
-                video.setThumbnailUrl(customThumbnailUrl);
-            } else {
-                try {
-                    String splash = streamtapeService.getSplashImage(uploadResult.getFileId());
+            try {
+                // Luôn lấy splash image từ Streamtape để làm ảnh hover khi có splashImageUrl
+                String splash = streamtapeService.getSplashImage(uploadResult.getFileId());
+                if (customThumbnailUrl != null && !customThumbnailUrl.isEmpty()) {
+                    log.info("🖼️ [Streamtape - New Thread] Sử dụng thumbnail tùy chỉnh: {}", customThumbnailUrl);
+                    video.setThumbnailUrl(customThumbnailUrl);
+                    if (splash != null && !splash.isEmpty()) {
+                        video.setSplashImageUrl(splash);
+                        log.info("🖼️ [Streamtape - New Thread] Đã set splash image (hover): {}", splash);
+                    }
+                } else {
                     if (splash != null && !splash.isEmpty()) {
                         video.setThumbnailUrl(splash);
                         video.setSplashImageUrl(splash);
@@ -110,9 +115,9 @@ public class StreamtapeUploadAsyncService {
                     } else {
                         log.warn("⚠️ [Streamtape - New Thread] Splash image null/empty cho file: {}", uploadResult.getFileId());
                     }
-                } catch (Exception e) {
-                    log.warn("⚠️ [Streamtape] Không lấy được splash image: {}", e.getMessage());
                 }
+            } catch (Exception e) {
+                log.warn("⚠️ [Streamtape] Không lấy được splash image: {}", e.getMessage());
             }
 
             video.setUploadedToDoodStreamAt(LocalDateTime.now());

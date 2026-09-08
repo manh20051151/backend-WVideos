@@ -83,17 +83,20 @@ public class VideoStatusSyncScheduler {
                     String currentThumb = video.getThumbnailUrl();
                     boolean isAutoThumb = currentThumb == null || currentThumb.isEmpty()
                             || currentThumb.contains("thumb.tapecontent.net/thumb/");
-                    if (isAutoThumb) {
-                        try {
-                            String splash = streamtapeService.getSplashImage(video.getFileCode());
-                            if (splash != null && !splash.isEmpty()) {
+                    try {
+                        String splash = streamtapeService.getSplashImage(video.getFileCode());
+                        if (splash != null && !splash.isEmpty()) {
+                            if (isAutoThumb) {
                                 video.setThumbnailUrl(splash);
+                            }
+                            // Luôn lưu splash image để hover card hiện ảnh Streamtape
+                            if (video.getSplashImageUrl() == null || video.getSplashImageUrl().isEmpty()) {
                                 video.setSplashImageUrl(splash);
                             }
-                        } catch (Exception e) {
-                            log.warn("⚠️ [Scheduler] Không lấy được splash image cho video {}: {}",
-                                    video.getId(), e.getMessage());
                         }
+                    } catch (Exception e) {
+                        log.warn("⚠️ [Scheduler] Không lấy được splash image cho video {}: {}",
+                                video.getId(), e.getMessage());
                     }
 
                     log.info("✅ [Scheduler] Video {} đã convert xong -> READY", video.getId());

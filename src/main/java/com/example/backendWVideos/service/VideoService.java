@@ -25,6 +25,8 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.Duration;
@@ -314,7 +316,8 @@ public class VideoService {
             throw new AppException(ErrorCode.UPLOAD_FAILED);
         }
 
-        // Flush để commit transaction ngay lập tức, đảm bảo async method tìm thấy video
+        // Flush đẩy SQL xuống DB (chưa commit). Việc đảm bảo async đọc được record
+        // được xử lý bằng TransactionSynchronization.afterCommit() ở dưới.
         videoRepository.flush();
 
         // Chọn provider upload (mặc định Streamtape)
@@ -322,17 +325,29 @@ public class VideoService {
                 com.example.backendWVideos.enums.VideoProvider.fromValue(request.getProvider());
         video.setProvider(provider.getValue());
 
-        if (provider == com.example.backendWVideos.enums.VideoProvider.STREAMTAPE) {
-            // Trigger async upload lên Streamtape
-            streamtapeUploadAsyncService.uploadToStreamtapeAsync(
-                    video.getId(), tempFilePath, file.getOriginalFilename(), request.getThumbnailUrl());
-            log.info("✅ === TRẢ VỀ NGAY (Streamtape) === sau {}ms", (System.currentTimeMillis() - startTime));
-        } else {
-            // Trigger async upload lên DoodStream - truyền file path thay vì bytes
-            videoUploadAsyncService.uploadToDoodStreamAsync(
-                    video.getId(), tempFilePath, file.getOriginalFilename(), request.getThumbnailUrl());
-            log.info("✅ === TRẢ VỀ NGAY (DoodStream) === sau {}ms", (System.currentTimeMillis() - startTime));
-        }
+        // Lưu ID và các thông tin cần thiết vào biến final để dùng trong callback afterCommit
+        final String videoId = video.getId();
+        final String finalTempFilePath = tempFilePath;
+        final String originalFilename = file.getOriginalFilename();
+        final String customThumbnailUrl = request.getThumbnailUrl();
+        final boolean isStreamtape = provider == com.example.backendWVideos.enums.VideoProvider.STREAMTAPE;
+
+        // Đăng ký async upload chạy SAU KHI transaction commit thành công.
+        // Nếu gọi trực tiếp ở đây, thread async có thể đọc DB trước khi record video được commit
+        // -> dẫn đến lỗi "Không tìm thấy video" (race condition giữa các transaction).
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                if (isStreamtape) {
+                    streamtapeUploadAsyncService.uploadToStreamtapeAsync(
+                            videoId, finalTempFilePath, originalFilename, customThumbnailUrl);
+                } else {
+                    videoUploadAsyncService.uploadToDoodStreamAsync(
+                            videoId, finalTempFilePath, originalFilename, customThumbnailUrl);
+                }
+            }
+        });
+        log.info("✅ === ĐÃ ĐĂNG KÝ ASYNC UPLOAD (chạy sau commit) === sau {}ms", (System.currentTimeMillis() - startTime));
 
         // Trả về ngay lập tức, không đợi upload provider
         return videoMapper.toVideoResponse(video);
@@ -715,16 +730,20 @@ public class VideoService {
                     }
 
                     // Cập nhật thumbnail từ splash image
-                    if (video.getThumbnailUrl() == null || video.getThumbnailUrl().isEmpty()) {
-                        try {
-                            String splash = streamtapeService.getSplashImage(video.getFileCode());
-                            if (splash != null && !splash.isEmpty()) {
+                    // Luôn lưu splash image để hover card hiện ảnh Streamtape,
+                    // chỉ ghi đè thumbnail_url khi chưa có (giữ nguyên thumbnail tùy chỉnh)
+                    try {
+                        String splash = streamtapeService.getSplashImage(video.getFileCode());
+                        if (splash != null && !splash.isEmpty()) {
+                            if (video.getThumbnailUrl() == null || video.getThumbnailUrl().isEmpty()) {
                                 video.setThumbnailUrl(splash);
+                            }
+                            if (video.getSplashImageUrl() == null || video.getSplashImageUrl().isEmpty()) {
                                 video.setSplashImageUrl(splash);
                             }
-                        } catch (Exception e) {
-                            log.warn("⚠️ Không lấy được splash image Streamtape: {}", e.getMessage());
                         }
+                    } catch (Exception e) {
+                        log.warn("⚠️ Không lấy được splash image Streamtape: {}", e.getMessage());
                     }
 
                     // Cập nhật timestamp sync
