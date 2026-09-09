@@ -2,9 +2,7 @@ package com.example.backendWVideos.service;
 
 import com.example.backendWVideos.dto.response.StreamtapeUploadResult;
 import com.example.backendWVideos.dto.response.StreamtapeUploadServerResponse;
-import com.example.backendWVideos.entity.Video;
 import com.example.backendWVideos.exception.AppException;
-import com.example.backendWVideos.repository.VideoRepository;
 import com.example.backendWVideos.exception.ErrorCode;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -12,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ByteArrayResource;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.*;
 import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Service;
@@ -24,6 +23,7 @@ import org.springframework.web.util.UriComponentsBuilder;
 import java.net.HttpURLConnection;
 import java.net.URI;
 import java.net.URL;
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
@@ -36,7 +36,10 @@ public class StreamtapeService {
 
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
-    private final VideoRepository videoRepository;
+    private final RedisTemplate<String, String> redisTemplate;
+
+    private static final String DIRECT_URL_CACHE_KEY = "streamtape:direct-url:";
+    private static final Duration DIRECT_URL_CACHE_TTL = Duration.ofHours(2);
 
     @Value("${streamtape.api-login}")
     private String apiLogin;
@@ -358,14 +361,23 @@ public class StreamtapeService {
         }
         log.info("🎬 Đang lấy direct video URL Streamtape cho file: {}", fileId);
 
-        // Cache hit: nếu đã resolve trước đó thì trả luôn (tránh gọi Streamtape mỗi lần load)
+        // Cache hit: dùng Redis TTL ngắn (2h) thay cho DB — link Streamtape là URL ký tên
+        // có hạn, chỉ cache tạm để tránh resolve lại mỗi lần, không lưu lâu dài trong DB.
         try {
-            Video cached = videoRepository.findByFileCode(fileId).orElse(null);
-            if (cached != null && cached.getDownloadUrl() != null && !cached.getDownloadUrl().isEmpty()) {
-                log.info("💾 Dùng cache direct URL cho file: {}", fileId);
-                return cached.getDownloadUrl();
+            String cached = redisTemplate.opsForValue().get(DIRECT_URL_CACHE_KEY + fileId);
+            if (cached != null && !cached.isEmpty()) {
+                if (isStreamtapeUrlAlive(cached)) {
+                    log.info("💾 Dùng cache Redis direct URL (còn hạn) cho file: {}", fileId);
+                    return cached;
+                }
+                log.warn("⚠️ Cache Redis direct URL đã hết hạn cho file: {}, resolve lại", fileId);
+                try {
+                    redisTemplate.delete(DIRECT_URL_CACHE_KEY + fileId);
+                } catch (Exception ignored) {
+                }
             }
-        } catch (Exception ignored) {
+        } catch (Exception e) {
+            log.warn("⚠️ Đọc cache Redis direct URL lỗi: {}", e.getMessage());
             // fallback xuống luồng resolve bình thường
         }
 
@@ -453,23 +465,53 @@ public class StreamtapeService {
     }
 
     /**
-     * Lưu direct URL vào video.downloadUrl để các lần load sau không phải gọi Streamtape nữa.
-     * Chỉ lưu khi chưa có (tránh ghi đè). URL có thể hết hạn theo thời gian; nếu playback lỗi,
-     * frontend sẽ fallback về iframe và lần load sau sẽ resolve lại.
+     * Kiểm tra direct URL Streamtape còn sống không (chưa hết hạn).
+     * Dùng GET Range bytes=0-0 với timeout ngắn để không tải toàn bộ file.
+     * Link hết hạn sẽ trả 404 {"status":404,"msg":"Link not valid anymore"}.
+     */
+    private boolean isStreamtapeUrlAlive(String url) {
+        HttpURLConnection conn = null;
+        try {
+            URL u = new URL(url);
+            conn = (HttpURLConnection) u.openConnection();
+            conn.setInstanceFollowRedirects(true);
+            conn.setRequestMethod("GET");
+            conn.setConnectTimeout(10000);
+            conn.setReadTimeout(10000);
+            conn.setRequestProperty("User-Agent", BROWSER_UA);
+            conn.setRequestProperty("Range", "bytes=0-0");
+            int status = conn.getResponseCode();
+            return status == HttpURLConnection.HTTP_OK
+                    || status == HttpURLConnection.HTTP_PARTIAL; // 206
+        } catch (Exception e) {
+            log.warn("⚠️ Không kiểm tra được liveness URL {}: {}", url, e.getMessage());
+            // Lỗi mạng tạm thời -> coi như còn sống để không resolve lại vô ích
+            return true;
+        } finally {
+            if (conn != null) {
+                try {
+                    conn.disconnect();
+                } catch (Exception ignored) {
+                }
+            }
+        }
+    }
+
+    /**
+     * Cache direct URL vào Redis với TTL ngắn (2h). Link Streamtape là URL ký tên
+     * tạm thời, không thể lưu vĩnh viễn trong DB; cache Redis giúp link luôn tươi
+     * và không bao giờ hết hạn giữa chừng khi phát.
      */
     private void cacheDirectUrl(String fileId, String url) {
         if (fileId == null || url == null || url.isEmpty()) {
             return;
         }
         try {
-            Video v = videoRepository.findByFileCode(fileId).orElse(null);
-            if (v != null && (v.getDownloadUrl() == null || v.getDownloadUrl().isEmpty())) {
-                v.setDownloadUrl(url);
-                videoRepository.save(v);
-                log.info("💾 Đã cache direct URL vào video.downloadUrl cho file: {}", fileId);
-            }
+            redisTemplate.opsForValue().set(DIRECT_URL_CACHE_KEY + fileId, url, DIRECT_URL_CACHE_TTL);
+            log.info("💾 Đã cache direct URL vào Redis (TTL {}h) cho file: {}",
+                    DIRECT_URL_CACHE_TTL.toHours(), fileId);
         } catch (Exception e) {
-            log.warn("⚠️ Không lưu được cache direct URL: {}", e.getMessage());
+            log.warn("⚠️ Không lưu được cache Redis direct URL: {}", e.getMessage());
         }
     }
 
