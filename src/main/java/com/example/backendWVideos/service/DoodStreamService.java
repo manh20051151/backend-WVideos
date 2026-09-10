@@ -17,6 +17,9 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Service
 @RequiredArgsConstructor
@@ -261,10 +264,64 @@ public class DoodStreamService {
     }
 
     /**
+     * Lấy direct video URL (mp4) từ DoodStream để phát trực tiếp, tương tự
+     * endpoint /videos/{fileCode}/stream-url nhưng gọi trực tiếp từ service.
+     * Trả về null nếu không lấy được.
+     */
+    public String getDirectVideoUrl(String fileCode) {
+        if (fileCode == null || fileCode.isBlank()) {
+            return null;
+        }
+        try {
+            String embedUrl = "https://dood.to/e/" + fileCode;
+            HttpHeaders headers = new HttpHeaders();
+            headers.set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36");
+            HttpEntity<String> entity = new HttpEntity<>(headers);
+
+            ResponseEntity<String> embedResponse = restTemplate.exchange(
+                    embedUrl, HttpMethod.GET, entity, String.class);
+            String html = embedResponse.getBody();
+            if (html == null) {
+                return null;
+            }
+
+            Pattern passMd5Pattern = Pattern.compile("/pass_md5/([^'\"]+)");
+            Matcher matcher = passMd5Pattern.matcher(html);
+            if (!matcher.find()) {
+                return null;
+            }
+
+            String passMd5Url = "https://dood.to/pass_md5/" + matcher.group(1);
+            ResponseEntity<String> passMd5Response = restTemplate.exchange(
+                    passMd5Url, HttpMethod.GET, entity, String.class);
+            String baseVideoUrl = passMd5Response.getBody();
+            if (baseVideoUrl == null || baseVideoUrl.isEmpty() || baseVideoUrl.equals("RELOAD")) {
+                return null;
+            }
+
+            String token = generateRandomToken(10);
+            String expiry = String.valueOf(System.currentTimeMillis());
+            return baseVideoUrl + token + "?token=" + token + "&expiry=" + expiry;
+        } catch (Exception e) {
+            log.error("❌ Lỗi lấy direct URL DoodStream: {}", e.getMessage());
+            return null;
+        }
+    }
+
+    private String generateRandomToken(int length) {
+        String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+        StringBuilder sb = new StringBuilder();
+        Random random = new Random();
+        for (int i = 0; i < length; i++) {
+            sb.append(chars.charAt(random.nextInt(chars.length())));
+        }
+        return sb.toString();
+    }
+
+    /**
      * Lấy danh sách file từ DoodStream
      */
-    public Map<String, Object> getFileList() {
-        try {
+    public Map<String, Object> getFileList() {        try {
             String url = apiBaseUrl + "/file/list?key=" + apiKey;
             
             ResponseEntity<Map> response = restTemplate.getForEntity(url, Map.class);

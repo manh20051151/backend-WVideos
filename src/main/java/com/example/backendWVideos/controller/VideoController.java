@@ -6,6 +6,9 @@ import com.example.backendWVideos.dto.request.VideoUploadRequest;
 import com.example.backendWVideos.dto.request.VideoInitUploadRequest;
 import com.example.backendWVideos.dto.response.VideoResponse;
 import com.example.backendWVideos.dto.response.VideoInitUploadResponse;
+import com.example.backendWVideos.dto.response.ShortsResponse;
+import com.example.backendWVideos.entity.User;
+import com.example.backendWVideos.repository.UserRepository;
 import com.example.backendWVideos.service.VideoService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -29,6 +32,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.List;
 
+import java.time.LocalDateTime;
+
 @RestController
 @RequestMapping("/videos")
 @RequiredArgsConstructor
@@ -38,6 +43,7 @@ public class VideoController {
 
     private final VideoService videoService;
     private final com.example.backendWVideos.service.StreamtapeService streamtapeService;
+    private final UserRepository userRepository;
     
     private RestTemplate getRestTemplate() {
         return new RestTemplate();
@@ -428,6 +434,58 @@ public class VideoController {
 
         return ApiResponse.<Page<VideoResponse>>builder()
                 .result(videos)
+                .build();
+    }
+
+    /**
+     * Resolve userId từ email đăng nhập, fallback sang guestId (cho người dùng chưa login).
+     */
+    private String resolveUserId(String guestId) {
+        String email = SecurityContextHolder.getContext().getAuthentication() != null
+                ? SecurityContextHolder.getContext().getAuthentication().getName() : null;
+        if (email != null && !email.isEmpty() && !"anonymousUser".equals(email)) {
+            User user = userRepository.findByEmail(email).orElse(null);
+            if (user != null) {
+                return user.getId();
+            }
+        }
+        return guestId;
+    }
+
+    @Operation(summary = "Mark video watched", description = "Đánh dấu video đã xem (dùng cho shorts feed, không hiện lại)")
+    @PostMapping("/{videoId}/watched")
+    @PreAuthorize("permitAll()")
+    public ApiResponse<Void> markWatched(
+            @PathVariable String videoId,
+            @RequestParam(required = false) String guestId
+    ) {
+        String userId = resolveUserId(guestId);
+        videoService.markWatched(userId, videoId);
+        return ApiResponse.<Void>builder()
+                .message("Đã đánh dấu đã xem")
+                .build();
+    }
+
+    @Operation(summary = "Get shorts feed", description = "Feed video dạng TikTok: loại trừ video đã xem, trả kèm streamUrl đã resolve")
+    @GetMapping("/shorts")
+    @PreAuthorize("permitAll()")
+    public ApiResponse<List<ShortsResponse>> getShorts(
+            @RequestParam(required = false) String lastCreatedAt,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String guestId
+    ) {
+        String userId = resolveUserId(guestId);
+        LocalDateTime cursor = null;
+        if (lastCreatedAt != null && !lastCreatedAt.isBlank()) {
+            try {
+                cursor = LocalDateTime.parse(lastCreatedAt);
+            } catch (Exception e) {
+                cursor = null;
+            }
+        }
+        List<ShortsResponse> result = videoService.getShorts(userId, cursor, size);
+        return ApiResponse.<List<ShortsResponse>>builder()
+                .result(result)
                 .build();
     }
 }

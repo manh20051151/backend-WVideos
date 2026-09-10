@@ -6,6 +6,7 @@ import com.example.backendWVideos.dto.request.VideoInitUploadRequest;
 import com.example.backendWVideos.dto.response.DoodStreamUploadResult;
 import com.example.backendWVideos.dto.response.VideoResponse;
 import com.example.backendWVideos.dto.response.VideoInitUploadResponse;
+import com.example.backendWVideos.dto.response.ShortsResponse;
 import com.example.backendWVideos.entity.User;
 import com.example.backendWVideos.entity.Video;
 import com.example.backendWVideos.enums.VideoStatus;
@@ -16,6 +17,8 @@ import com.example.backendWVideos.repository.UserRepository;
 import com.example.backendWVideos.repository.VideoRepository;
 import com.example.backendWVideos.repository.SubscriptionRepository;
 import com.example.backendWVideos.repository.VideoReactionRepository;
+import com.example.backendWVideos.repository.WatchedVideoRepository;
+import com.example.backendWVideos.entity.WatchedVideo;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -27,6 +30,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.Duration;
@@ -59,6 +63,7 @@ public class VideoService {
     private final StreamtapeUploadAsyncService streamtapeUploadAsyncService;
     private final SubscriptionRepository subscriptionRepository;
     private final VideoReactionRepository videoReactionRepository;
+    private final WatchedVideoRepository watchedVideoRepository;
 
     /**
      * Init upload - Tạo video record và lấy upload server
@@ -672,6 +677,90 @@ public class VideoService {
             
             log.info("👁️ Đã tăng lượt xem cho video: {} từ IP: {}", video.getTitle(), clientIp);
         }
+    }
+
+    /**
+     * Đánh dấu video đã xem (dùng cho shorts feed, không hiện lại video đã xem).
+     * Chạy async + idempotent (unique user_id+video_id) nên an toàn khi gọi nhiều lần.
+     */
+    @Async
+    @Transactional
+    public void markWatched(String userId, String videoId) {
+        if (userId == null || userId.isBlank() || videoId == null || videoId.isBlank()) {
+            return;
+        }
+        try {
+            if (watchedVideoRepository.existsByUserIdAndVideoId(userId, videoId)) {
+                return;
+            }
+            watchedVideoRepository.save(WatchedVideo.builder()
+                    .userId(userId)
+                    .videoId(videoId)
+                    .watchedAt(LocalDateTime.now())
+                    .build());
+            log.info("✅ Đã đánh dấu đã xem: user={}, video={}", userId, videoId);
+        } catch (DataIntegrityViolationException e) {
+            // Trùng lặp (concurrent) -> bỏ qua
+            log.debug("Video đã được đánh dấu xem trước đó: {}", videoId);
+        }
+    }
+
+    /**
+     * Lấy feed shorts: danh sách video public READY, loại trừ những video user đã xem,
+     * kèm theo streamUrl (direct mp4) đã resolve từ cache Redis để phát ngay không delay.
+     * Dùng keyset pagination theo createdAt để tránh OFFSET sâu.
+     */
+    @Transactional(readOnly = true)
+    public List<ShortsResponse> getShorts(String userId, LocalDateTime lastCreatedAt, int size) {
+        int limit = Math.min(Math.max(size, 1), 30);
+        Pageable pageable = PageRequest.of(0, limit);
+
+        List<Video> videos;
+        if (userId != null && !userId.isBlank()) {
+            videos = videoRepository.findShortsExcludingWatched(userId, lastCreatedAt, pageable);
+        } else {
+            videos = videoRepository.findShorts(lastCreatedAt, pageable);
+        }
+
+        // Resolve streamUrl song song (dựa vào Redis cache nên lần 2 rất nhanh)
+        return videos.parallelStream()
+                .map(this::toShortsResponse)
+                .collect(Collectors.toList());
+    }
+
+    private ShortsResponse toShortsResponse(Video video) {
+        return ShortsResponse.builder()
+                .id(video.getId())
+                .title(video.getTitle())
+                .streamUrl(resolveStreamUrl(video))
+                .thumbnailUrl(video.getThumbnailUrl())
+                .splashImageUrl(video.getSplashImageUrl())
+                .userFullName(video.getUser() != null ? video.getUser().getFullName() : null)
+                .duration(video.getDuration())
+                .views(video.getViews())
+                .createdAt(video.getCreatedAt())
+                .build();
+    }
+
+    /**
+     * Resolve direct mp4 URL theo provider. Streamtape dùng cache Redis (TTL 2h),
+     * DoodStream scrape pass_md5. Trả null nếu không resolve được.
+     */
+    private String resolveStreamUrl(Video video) {
+        if (video.getFileCode() == null || video.getFileCode().isBlank()) {
+            return null;
+        }
+        try {
+            if ("streamtape".equalsIgnoreCase(video.getProvider())) {
+                return streamtapeService.getDirectVideoUrl(video.getFileCode());
+            }
+            if ("doodstream".equalsIgnoreCase(video.getProvider())) {
+                return doodStreamService.getDirectVideoUrl(video.getFileCode());
+            }
+        } catch (Exception e) {
+            log.warn("⚠️ Không resolve được streamUrl cho video {}: {}", video.getId(), e.getMessage());
+        }
+        return null;
     }
 
     /**

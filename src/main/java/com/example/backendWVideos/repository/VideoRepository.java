@@ -1,6 +1,7 @@
 package com.example.backendWVideos.repository;
 
 import com.example.backendWVideos.entity.Video;
+import com.example.backendWVideos.entity.WatchedVideo;
 import com.example.backendWVideos.enums.VideoStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -14,6 +15,8 @@ import org.springframework.stereotype.Repository;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+
+import java.time.LocalDateTime;
 
 @Repository
 public interface VideoRepository extends JpaRepository<Video, String> {
@@ -121,4 +124,21 @@ public interface VideoRepository extends JpaRepository<Video, String> {
                                  @Param("categoryIds") List<String> categoryIds,
                                  @Param("tags") List<String> tags,
                                  Pageable pageable);
+
+    // === Shorts feed ===
+
+    @EntityGraph(attributePaths = {"categories", "user", "tags"})
+    @Query("SELECT v FROM Video v WHERE v.status = 'READY' AND v.isPublic = true " +
+           "AND (:lastCreatedAt IS NULL OR v.createdAt < :lastCreatedAt) " +
+           "ORDER BY v.createdAt DESC")
+    List<Video> findShorts(@Param("lastCreatedAt") LocalDateTime lastCreatedAt, Pageable pageable);
+
+    @EntityGraph(attributePaths = {"categories", "user", "tags"})
+    @Query("SELECT v FROM Video v WHERE v.status = 'READY' AND v.isPublic = true " +
+           "AND (:lastCreatedAt IS NULL OR v.createdAt < :lastCreatedAt) " +
+           "AND NOT EXISTS (SELECT w FROM WatchedVideo w WHERE w.userId = :userId AND w.videoId = v.id) " +
+           "ORDER BY v.createdAt DESC")
+    List<Video> findShortsExcludingWatched(@Param("userId") String userId,
+                                           @Param("lastCreatedAt") LocalDateTime lastCreatedAt,
+                                           Pageable pageable);
 }
