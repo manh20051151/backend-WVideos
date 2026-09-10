@@ -14,6 +14,7 @@ public class ShortsResponse {
     private String thumbnailUrl;
     private String splashImageUrl;
     private String userFullName;
+    private String avatarUrl;       // ảnh đại diện người đăng
     private Long duration;
     private Long views;
     private Long likeCount;
