@@ -85,6 +85,7 @@ public class VideoService {
                 .categories(categories)
                 .tags(request.getTags() != null ? request.getTags() : new java.util.HashSet<>())
                 .thumbnailUrl(request.getThumbnailUrl())
+                .duration(request.getDuration()) // Thời lượng do frontend đọc từ metadata
                 .build();
 
         video = videoRepository.save(video);
@@ -296,6 +297,7 @@ public class VideoService {
                 .categories(categories)
                 .tags(request.getTags() != null ? request.getTags() : new java.util.HashSet<>())
                 .thumbnailUrl(request.getThumbnailUrl()) // Lưu thumbnail nếu có
+                .duration(request.getDuration()) // Thời lượng do frontend đọc từ metadata
                 .build();
 
         video = videoRepository.save(video);

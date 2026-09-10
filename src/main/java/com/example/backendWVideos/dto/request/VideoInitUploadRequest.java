@@ -10,4 +10,7 @@ public class VideoInitUploadRequest {
     private java.util.List<String> categoryIds;
     private java.util.Set<String> tags;
     private String thumbnailUrl;
+
+    // Thời lượng video (giây) - frontend đọc từ metadata trước khi upload
+    private Long duration;
 }

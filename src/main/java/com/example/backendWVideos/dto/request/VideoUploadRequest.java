@@ -37,4 +37,7 @@ public class VideoUploadRequest {
 
     // Provider upload: "streamtape" (mặc định) hoặc "doodstream"
     private String provider;
+
+    // Thời lượng video (giây) - frontend đọc từ metadata trước khi upload
+    private Long duration;
 }
