@@ -18,7 +18,9 @@ import com.example.backendWVideos.repository.VideoRepository;
 import com.example.backendWVideos.repository.SubscriptionRepository;
 import com.example.backendWVideos.repository.VideoReactionRepository;
 import com.example.backendWVideos.repository.WatchedVideoRepository;
+import com.example.backendWVideos.repository.VideoPurchaseRepository;
 import com.example.backendWVideos.entity.WatchedVideo;
+import com.example.backendWVideos.entity.VideoPurchase;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -64,6 +66,8 @@ public class VideoService {
     private final SubscriptionRepository subscriptionRepository;
     private final VideoReactionRepository videoReactionRepository;
     private final WatchedVideoRepository watchedVideoRepository;
+    private final VideoPurchaseRepository videoPurchaseRepository;
+    private final UserFinancialService userFinancialService;
 
     /**
      * Init upload - Tạo video record và lấy upload server
@@ -303,6 +307,7 @@ public class VideoService {
                 .tags(request.getTags() != null ? request.getTags() : new java.util.HashSet<>())
                 .thumbnailUrl(request.getThumbnailUrl()) // Lưu thumbnail nếu có
                 .duration(request.getDuration()) // Thời lượng do frontend đọc từ metadata
+                .price(request.getPrice() != null ? request.getPrice() : 0L) // Giá video, 0 = miễn phí
                 .build();
 
         video = videoRepository.save(video);
@@ -454,6 +459,18 @@ public class VideoService {
     }
     
     /**
+     * Ẩn thông tin phát video (fileCode, embedUrl, ...) trong danh sách công khai
+     * để tránh lộ mã nguồn video có phí qua các endpoint listing.
+     */
+    private void stripStreamInfo(VideoResponse r) {
+        r.setFileCode(null);
+        r.setEmbedUrl(null);
+        r.setProtectedEmbedUrl(null);
+        r.setDownloadUrl(null);
+        r.setProtectedDownloadUrl(null);
+    }
+
+    /**
      * Lấy danh sách video public với sort type - sử dụng native query để tối ưu performance
      */
     @Transactional(readOnly = true)
@@ -481,7 +498,11 @@ public class VideoService {
                 break;
         }
         
-        return videos.map(videoMapper::toVideoResponse);
+        return videos.map(v -> {
+            VideoResponse r = videoMapper.toVideoResponse(v);
+            stripStreamInfo(r);
+            return r;
+        });
     }
 
     /**
@@ -513,7 +534,11 @@ public class VideoService {
                 break;
         }
         
-        return videos.map(videoMapper::toVideoResponse);
+        return videos.map(v -> {
+            VideoResponse r = videoMapper.toVideoResponse(v);
+            stripStreamInfo(r);
+            return r;
+        });
     }
 
     /**
@@ -531,15 +556,18 @@ public class VideoService {
         }
         
         VideoResponse response = videoMapper.toVideoResponse(video);
-        
+
         // Lấy số người đăng ký của channel
         long subscriberCount = subscriptionRepository.countByChannelId(video.getUser().getId());
         response.setSubscriberCount(subscriberCount);
-        
+
+        String currentUserId = null;
+
         // Kiểm tra user hiện tại đã đăng ký chưa
         if (userEmail != null && !userEmail.isEmpty() && !"anonymousUser".equals(userEmail)) {
             User currentUser = userRepository.findByEmail(userEmail).orElse(null);
             if (currentUser != null) {
+                currentUserId = currentUser.getId();
                 boolean isSubscribed = subscriptionRepository.existsBySubscriberIdAndChannelId(
                         currentUser.getId(), video.getUser().getId());
                 response.setIsSubscribed(isSubscribed);
@@ -555,8 +583,78 @@ public class VideoService {
         long dislikeCount = videoReactionRepository.countByVideoIdAndReactionType(videoId, com.example.backendWVideos.enums.VideoReactionType.DISLIKE);
         response.setLikeCount(likeCount);
         response.setDislikeCount(dislikeCount);
-        
+
+        // Kiểm tra quyền xem video có phí
+        Long price = video.getPrice() != null ? video.getPrice() : 0L;
+        boolean isOwner = currentUserId != null && video.getUser() != null
+                && currentUserId.equals(video.getUser().getId());
+        boolean purchased = currentUserId != null
+                && videoPurchaseRepository.existsByUserIdAndVideoId(currentUserId, videoId);
+        boolean hasAccess = price == 0 || isOwner || purchased;
+
+        response.setIsPurchased(purchased);
+        response.setHasAccess(hasAccess);
+
+        // Nếu không có quyền xem (video có phí chưa mua) thì không trả thông tin phát video
+        if (!hasAccess) {
+            response.setEmbedUrl(null);
+            response.setProtectedEmbedUrl(null);
+            response.setDownloadUrl(null);
+            response.setProtectedDownloadUrl(null);
+        }
+
         return response;
+    }
+
+    /**
+     * Mua video có phí: trừ tiền từ ví người mua, cộng doanh thu cho chủ video.
+     */
+    @Transactional
+    public VideoResponse purchaseVideo(String userEmail, String videoId) {
+        if (userEmail == null || userEmail.isEmpty() || "anonymousUser".equals(userEmail)) {
+            throw new AppException(ErrorCode.UNAUTHORIZED, "Bạn cần đăng nhập để mua video");
+        }
+
+        User buyer = userRepository.findByEmail(userEmail)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+
+        Video video = videoRepository.findById(videoId)
+                .orElseThrow(() -> new AppException(ErrorCode.VIDEO_NOT_FOUND));
+
+        Long price = video.getPrice() != null ? video.getPrice() : 0L;
+        if (price == 0) {
+            throw new AppException(ErrorCode.VIDEO_IS_FREE);
+        }
+
+        // Không cho mua video của chính mình
+        if (video.getUser() != null && buyer.getId().equals(video.getUser().getId())) {
+            throw new AppException(ErrorCode.CANNOT_PURCHASE_OWN_VIDEO);
+        }
+
+        // Đã mua rồi thì không mua lại
+        if (videoPurchaseRepository.existsByUserIdAndVideoId(buyer.getId(), videoId)) {
+            throw new AppException(ErrorCode.VIDEO_ALREADY_PURCHASED);
+        }
+
+        // Trừ tiền người mua (nếu không đủ sẽ ném INSUFFICIENT_BALANCE)
+        userFinancialService.updateUserBalance(buyer.getId(), price.doubleValue(), "SUBTRACT");
+
+        // Lưu giao dịch mua video
+        videoPurchaseRepository.save(VideoPurchase.builder()
+                .userId(buyer.getId())
+                .videoId(videoId)
+                .price(price)
+                .build());
+
+        // Cộng doanh thu cho chủ video
+        if (video.getUser() != null) {
+            userFinancialService.updateUserRevenue(video.getUser().getId(), price.doubleValue());
+        }
+
+        log.info("✅ User {} đã mua video {} với giá {}", buyer.getId(), videoId, price);
+
+        // Trả về chi tiết video (đã có quyền xem)
+        return getVideoById(videoId, userEmail);
     }
 
     /**
@@ -936,7 +1034,11 @@ public class VideoService {
         if ((categoryIds.isEmpty() && tags.isEmpty())) {
             Page<Video> userVideos = videoRepository.findByUserIdAndStatusAndIsPublicTrue(currentVideo.getUser().getId(), VideoStatus.READY, pageable);
             log.info("📺 Tìm thấy {} video cùng user", userVideos.getTotalElements());
-            return userVideos.map(videoMapper::toVideoResponse);
+            return userVideos.map(v -> {
+                VideoResponse r = videoMapper.toVideoResponse(v);
+                stripStreamInfo(r);
+                return r;
+            });
         }
 
         Page<Video> relatedVideos = videoRepository.findRelatedVideos(
@@ -952,9 +1054,17 @@ public class VideoService {
         if (relatedVideos.getTotalElements() == 0) {
             log.info("📺 Không tìm thấy video liên quan, trả về video public mới nhất");
             return videoRepository.findPublicVideosNative(pageable)
-                .map(videoMapper::toVideoResponse);
+                .map(v -> {
+                    VideoResponse r = videoMapper.toVideoResponse(v);
+                    stripStreamInfo(r);
+                    return r;
+                });
         }
 
-        return relatedVideos.map(videoMapper::toVideoResponse);
+        return relatedVideos.map(v -> {
+            VideoResponse r = videoMapper.toVideoResponse(v);
+            stripStreamInfo(r);
+            return r;
+        });
     }
 }

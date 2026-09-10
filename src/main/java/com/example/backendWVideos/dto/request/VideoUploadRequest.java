@@ -40,4 +40,7 @@ public class VideoUploadRequest {
 
     // Thời lượng video (giây) - frontend đọc từ metadata trước khi upload
     private Long duration;
+
+    // Giá video (VND), 0 = miễn phí
+    private Long price = 0L;
 }

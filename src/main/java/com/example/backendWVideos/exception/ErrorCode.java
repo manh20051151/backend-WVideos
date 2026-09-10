@@ -95,6 +95,9 @@ public enum ErrorCode {
     DOODSTREAM_ERROR(9603, "Lỗi kết nối DoodStream", HttpStatus.INTERNAL_SERVER_ERROR),
     STREAMTAPE_ERROR(9605, "Lỗi kết nối Streamtape", HttpStatus.INTERNAL_SERVER_ERROR),
     UPLOAD_FAILED(9604, "Upload video thất bại", HttpStatus.INTERNAL_SERVER_ERROR),
+    VIDEO_IS_FREE(9606, "Video này miễn phí, không cần mua", HttpStatus.BAD_REQUEST),
+    CANNOT_PURCHASE_OWN_VIDEO(9607, "Không thể mua video của chính mình", HttpStatus.BAD_REQUEST),
+    VIDEO_ALREADY_PURCHASED(9608, "Bạn đã mua video này rồi", HttpStatus.BAD_REQUEST),
     
     // Comment errors
     COMMENT_NOT_FOUND(9701, "Không tìm thấy bình luận", HttpStatus.NOT_FOUND),

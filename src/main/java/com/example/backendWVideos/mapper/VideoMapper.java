@@ -44,6 +44,7 @@ public class VideoMapper {
                 .commentsCount(video.getCommentsCount())
                 .status(video.getStatus())
                 .isPublic(video.getIsPublic())
+                .price(video.getPrice())
                 .categories(mapCategoriesToResponse(video.getCategories()))
                 .tags(video.getTags())
                 .userId(video.getUser() != null ? video.getUser().getId() : null)

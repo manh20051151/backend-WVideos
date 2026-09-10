@@ -85,7 +85,11 @@ public class Video {
     
     @Column(name = "is_public")
     private Boolean isPublic = true;
-    
+
+    // Giá video (VND), 0 = miễn phí
+    @Column(name = "price")
+    private Long price = 0L;
+
     // Thể loại video (nhiều thể loại)
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(

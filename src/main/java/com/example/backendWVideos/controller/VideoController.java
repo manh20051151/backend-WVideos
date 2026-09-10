@@ -227,6 +227,21 @@ public class VideoController {
                 .build();
     }
 
+    @Operation(summary = "Mua video có phí", description = "Trừ tiền ví người mua, cộng doanh thu cho chủ video")
+    @PostMapping("/{videoId}/purchase")
+    @PreAuthorize("permitAll()")
+    public ApiResponse<VideoResponse> purchaseVideo(@PathVariable String videoId) {
+        String userEmail = SecurityContextHolder.getContext().getAuthentication().getName();
+        if ("anonymousUser".equals(userEmail)) {
+            userEmail = null;
+        }
+        VideoResponse video = videoService.purchaseVideo(userEmail, videoId);
+        return ApiResponse.<VideoResponse>builder()
+                .message("Mua video thành công")
+                .result(video)
+                .build();
+    }
+
     @Operation(summary = "Update video", description = "Cập nhật thông tin video")
     @PutMapping("/{videoId}")
     public ApiResponse<VideoResponse> updateVideo(

@@ -33,6 +33,9 @@ public class VideoResponse {
     private Long commentsCount;
     private VideoStatus status;
     private Boolean isPublic;
+    private Long price;            // Giá video (VND), 0 = miễn phí
+    private Boolean isPurchased;   // User hiện tại đã mua chưa
+    private Boolean hasAccess;     // User hiện tại có quyền xem (owner | miễn phí | đã mua)
     private List<CategoryResponse> categories;
     private Set<String> tags;
     private String userId;
