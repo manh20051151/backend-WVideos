@@ -1,16 +1,20 @@
 package com.example.backendWVideos.service;
 
 import com.example.backendWVideos.dto.response.FavoriteResponse;
+import com.example.backendWVideos.dto.response.VideoResponse;
 import com.example.backendWVideos.entity.User;
 import com.example.backendWVideos.entity.Video;
 import com.example.backendWVideos.entity.VideoFavorite;
 import com.example.backendWVideos.exception.AppException;
 import com.example.backendWVideos.exception.ErrorCode;
+import com.example.backendWVideos.mapper.VideoMapper;
 import com.example.backendWVideos.repository.UserRepository;
 import com.example.backendWVideos.repository.VideoFavoriteRepository;
 import com.example.backendWVideos.repository.VideoRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,6 +29,7 @@ public class VideoFavoriteService {
     private final VideoFavoriteRepository videoFavoriteRepository;
     private final VideoRepository videoRepository;
     private final UserRepository userRepository;
+    private final VideoMapper videoMapper;
 
     @Transactional
     public FavoriteResponse toggleFavorite(String userEmail, String videoId) {
@@ -68,19 +73,12 @@ public class VideoFavoriteService {
         return videoFavoriteRepository.existsByUserIdAndVideoId(user.getId(), videoId);
     }
 
-    public List<FavoriteResponse> getUserFavorites(String userEmail) {
+    @Transactional(readOnly = true)
+    public Page<VideoResponse> getUserFavorites(String userEmail, Pageable pageable) {
         User user = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
-        
-        return videoFavoriteRepository.findAll().stream()
-                .filter(f -> f.getUser().getId().equals(user.getId()))
-                .map(f -> FavoriteResponse.builder()
-                        .id(f.getId())
-                        .userId(user.getId())
-                        .userFullName(user.getFullName())
-                        .videoId(f.getVideo().getId())
-                        .createdAt(f.getCreatedAt())
-                        .build())
-                .collect(Collectors.toList());
+
+        return videoFavoriteRepository.findAllByUserIdOrderByCreatedAtDesc(user.getId(), pageable)
+                .map(f -> videoMapper.toVideoResponse(f.getVideo()));
     }
 }

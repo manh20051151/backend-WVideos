@@ -2,15 +2,17 @@ package com.example.backendWVideos.controller;
 
 import com.example.backendWVideos.dto.request.ApiResponse;
 import com.example.backendWVideos.dto.response.FavoriteResponse;
+import com.example.backendWVideos.dto.response.VideoResponse;
 import com.example.backendWVideos.service.VideoFavoriteService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/videos")
@@ -46,13 +48,17 @@ public class VideoFavoriteController {
                 .build();
     }
 
-    @Operation(summary = "Get user favorites", description = "Lấy danh sách video đã yêu thích")
+    @Operation(summary = "Get user favorites", description = "Lấy danh sách video đã yêu thích (phân trang)")
     @GetMapping("/favorites")
-    public ApiResponse<List<FavoriteResponse>> getUserFavorites() {
+    public ApiResponse<Page<VideoResponse>> getUserFavorites(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "12") int size
+    ) {
         String userEmail = SecurityContextHolder.getContext().getAuthentication().getName();
-        List<FavoriteResponse> favorites = videoFavoriteService.getUserFavorites(userEmail);
-        
-        return ApiResponse.<List<FavoriteResponse>>builder()
+        Pageable pageable = PageRequest.of(page, size);
+        Page<VideoResponse> favorites = videoFavoriteService.getUserFavorites(userEmail, pageable);
+
+        return ApiResponse.<Page<VideoResponse>>builder()
                 .result(favorites)
                 .build();
     }

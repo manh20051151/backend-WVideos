@@ -2,17 +2,22 @@ package com.example.backendWVideos.service;
 
 import com.example.backendWVideos.dto.request.ApiResponse;
 import com.example.backendWVideos.dto.response.VideoReactionResponse;
+import com.example.backendWVideos.dto.response.VideoResponse;
 import com.example.backendWVideos.entity.User;
 import com.example.backendWVideos.entity.Video;
 import com.example.backendWVideos.entity.VideoReaction;
 import com.example.backendWVideos.enums.VideoReactionType;
 import com.example.backendWVideos.exception.AppException;
 import com.example.backendWVideos.exception.ErrorCode;
+import com.example.backendWVideos.mapper.VideoMapper;
 import com.example.backendWVideos.repository.UserRepository;
 import com.example.backendWVideos.repository.VideoReactionRepository;
 import com.example.backendWVideos.repository.VideoRepository;
 import lombok.RequiredArgsConstructor;
+import org.hibernate.Hibernate;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,6 +32,7 @@ public class VideoReactionService {
     private final VideoReactionRepository videoReactionRepository;
     private final VideoRepository videoRepository;
     private final UserRepository userRepository;
+    private final VideoMapper videoMapper;
     
     // Toggle reaction (like/dislike)
     @Transactional
@@ -111,6 +117,24 @@ public class VideoReactionService {
                 .dislikeCount(dislikeCount)
                 .userReaction(userReaction)
                 .build();
+    }
+    
+    // Lấy danh sách video user đã thích (reaction LIKE), phân trang
+    @Transactional(readOnly = true)
+    public Page<VideoResponse> getLikedVideos(String userEmail, Pageable pageable) {
+        User user = userRepository.findByEmail(userEmail)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+
+        return videoReactionRepository
+                .findByUserIdAndReactionTypeOrderByCreatedAtDesc(user.getId(), VideoReactionType.LIKE, pageable)
+                .map(r -> {
+                    Video video = r.getVideo();
+                    // Khởi tạo các quan hệ lazy trước khi map (tránh lỗi lazy init khi serialize)
+                    Hibernate.initialize(video.getUser());
+                    Hibernate.initialize(video.getCategories());
+                    Hibernate.initialize(video.getTags());
+                    return videoMapper.toVideoResponse(video);
+                });
     }
     
     private User getCurrentUser() {
