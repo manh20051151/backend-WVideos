@@ -36,4 +36,11 @@ public class UserResponse {
     
     // Danh sách ID tài liệu người dùng đã mua
     List<String> purchasedDocumentIds;
+
+    // Số người đăng ký kênh
+    Long subscriberCount;
+
+    // Số dư và doanh thu (VND)
+    Double balance;
+    Double revenue;
 }

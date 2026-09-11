@@ -141,14 +141,20 @@ public class UserService {
         // Load user kèm theo purchasedDocuments và roles
         User user = userRepository.findByIdWithRolesAndPurchasedDocuments(id)
                 .orElseThrow(() -> new RuntimeException("User not found"));
-        return userMapper.toUserResponse(user);
+        return withSubscriberCount(userMapper.toUserResponse(user), user.getId());
     }
 
     public UserResponse getUserNotoken(String id){
         // Load user kèm theo purchasedDocuments và roles
         User user = userRepository.findByIdWithRolesAndPurchasedDocuments(id)
                 .orElseThrow(() -> new RuntimeException("User not found"));
-        return userMapper.toUserResponse(user);
+        return withSubscriberCount(userMapper.toUserResponse(user), user.getId());
+    }
+
+    // Gắn số người đăng ký kênh vào UserResponse
+    private UserResponse withSubscriberCount(UserResponse response, String userId) {
+        response.setSubscriberCount(subscriptionRepository.countByChannelId(userId));
+        return response;
     }
 
 
@@ -282,23 +288,27 @@ public class UserService {
                 .bankName(firstRow[7] != null ? String.valueOf(firstRow[7]) : null)
                 .bankAccountHolderName(firstRow[8] != null ? String.valueOf(firstRow[8]) : null)
                 .bankAccountNumber(firstRow[9] != null ? String.valueOf(firstRow[9]) : null)
+                .balance(firstRow[10] != null ? ((Number) firstRow[10]).doubleValue() : 0.0)
+                .revenue(firstRow[11] != null ? ((Number) firstRow[11]).doubleValue() : 0.0)
                 .build();
-        
+
         // Load roles từ các row còn lại
         Set<Role> roles = new HashSet<>();
         for (Object[] row : userRows) {
-            if (row[10] != null) { // role_id
+            if (row[12] != null) { // role_id
                 Role role = Role.builder()
-                        .id(String.valueOf(row[10]))
-                        .name(row[11] != null ? String.valueOf(row[11]) : null)
-                        .description(row[12] != null ? String.valueOf(row[12]) : null)
+                        .id(String.valueOf(row[12]))
+                        .name(row[13] != null ? String.valueOf(row[13]) : null)
+                        .description(row[14] != null ? String.valueOf(row[14]) : null)
                         .build();
                 roles.add(role);
             }
         }
         user.setRoles(roles);
 
-        return userMapper.toUserResponse(user);
+        UserResponse response = userMapper.toUserResponse(user);
+        response.setSubscriberCount(subscriptionRepository.countByChannelId(user.getId()));
+        return response;
     }
 
 

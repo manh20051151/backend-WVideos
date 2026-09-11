@@ -75,6 +75,7 @@ public interface UserRepository extends JpaRepository<User, String> {
     @Query(value = """
         SELECT u.id, u.password, u.number_phone, u.full_name, u.avatar, u.email, 
                u.gender, u.bank_name, u.bank_account_holder_name, u.bank_account_number,
+               u.balance, u.revenue,
                r.id as role_id, r.name as role_name, r.description as role_description
         FROM users u 
         LEFT JOIN user_roles ur ON u.id = ur.user_id 
