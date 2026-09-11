@@ -3,6 +3,7 @@ package com.example.backendWVideos.controller;
 import com.example.backendWVideos.dto.request.ApiResponse;
 import com.example.backendWVideos.dto.request.SubscriptionRequest;
 import com.example.backendWVideos.dto.response.SubscriptionResponse;
+import com.example.backendWVideos.dto.response.UserResponse;
 import com.example.backendWVideos.service.SubscriptionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -80,6 +81,17 @@ public class SubscriptionController {
                 .code(1000)
                 .message("OK")
                 .result(channelIds)
+                .build());
+    }
+
+    // Lấy danh sách kênh đã đăng ký (thông tin chi tiết)
+    @GetMapping("/my-channels")
+    public ResponseEntity<ApiResponse<List<UserResponse>>> getMyChannels() {
+        List<UserResponse> channels = subscriptionService.getMyChannels();
+        return ResponseEntity.ok(ApiResponse.<List<UserResponse>>builder()
+                .code(1000)
+                .message("OK")
+                .result(channels)
                 .build());
     }
 }
