@@ -26,6 +26,11 @@ public interface VideoRepository extends JpaRepository<Video, String> {
     // Tối ưu: Fetch categories và tags cùng lúc cho findById
     @EntityGraph(attributePaths = {"categories", "user", "tags"})
     Optional<Video> findById(String id);
+
+    // Tối ưu: Fetch categories, user, tags cho danh sách id (tránh LazyInitialization khi serialize)
+    @Override
+    @EntityGraph(attributePaths = {"categories", "user", "tags"})
+    List<Video> findAllById(Iterable<String> ids);
     
     // Tối ưu: Fetch categories và tags cùng lúc để tránh N+1
     @EntityGraph(attributePaths = {"categories", "tags"})

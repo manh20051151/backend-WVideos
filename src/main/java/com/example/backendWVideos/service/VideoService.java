@@ -24,6 +24,7 @@ import com.example.backendWVideos.entity.VideoPurchase;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -42,6 +43,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 import com.example.backendWVideos.entity.Category;
@@ -429,6 +431,43 @@ public class VideoService {
         log.info("�️ Found {} deleted videos for user {}", videos.getTotalElements(), userEmail);
         
         return videos.map(videoMapper::toVideoResponse);
+    }
+
+    /**
+     * Lấy danh sách video đã mua của user (sắp xếp theo thời gian mua mới nhất)
+     */
+    @Transactional
+    public Page<VideoResponse> getPurchasedVideos(String userEmail, Pageable pageable) {
+        User user = userRepository.findByEmail(userEmail)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+
+        Page<VideoPurchase> purchases = videoPurchaseRepository.findByUserIdOrderByPurchasedAtDesc(user.getId(), pageable);
+
+        List<String> videoIds = purchases.getContent().stream()
+                .map(VideoPurchase::getVideoId)
+                .toList();
+
+        List<Video> videos = videoIds.isEmpty()
+                ? List.of()
+                : videoRepository.findAllById(videoIds);
+
+        Map<String, Video> videoMap = videos.stream()
+                .collect(Collectors.toMap(Video::getId, v -> v));
+
+        List<VideoResponse> responses = purchases.getContent().stream()
+                .map(p -> videoMap.get(p.getVideoId()))
+                .filter(Objects::nonNull)
+                .map(v -> {
+                    VideoResponse response = videoMapper.toVideoResponse(v);
+                    response.setIsPurchased(true);
+                    response.setHasAccess(true);
+                    return response;
+                })
+                .toList();
+
+        log.info("🛒 Found {} purchased videos for user {}", purchases.getTotalElements(), userEmail);
+
+        return new PageImpl<>(responses, pageable, purchases.getTotalElements());
     }
     
     /**

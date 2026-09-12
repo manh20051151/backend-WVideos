@@ -142,6 +142,23 @@ public class VideoController {
                 .build();
     }
     
+    @Operation(summary = "Get purchased videos", description = "Lấy danh sách video đã mua của user")
+    @GetMapping("/purchased")
+    public ApiResponse<Page<VideoResponse>> getPurchasedVideos(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        String userEmail = SecurityContextHolder.getContext().getAuthentication().getName();
+        
+        Pageable pageable = PageRequest.of(page, size);
+        
+        Page<VideoResponse> videos = videoService.getPurchasedVideos(userEmail, pageable);
+        
+        return ApiResponse.<Page<VideoResponse>>builder()
+                .result(videos)
+                .build();
+    }
+    
     @Operation(summary = "Get deleted videos", description = "Lấy danh sách video đã xóa (thùng rác) - Chỉ Admin")
     @GetMapping("/deleted")
     @PreAuthorize("hasRole('ADMIN')")

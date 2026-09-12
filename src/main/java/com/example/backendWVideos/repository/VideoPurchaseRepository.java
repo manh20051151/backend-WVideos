@@ -1,6 +1,8 @@
 package com.example.backendWVideos.repository;
 
 import com.example.backendWVideos.entity.VideoPurchase;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -12,4 +14,6 @@ public interface VideoPurchaseRepository extends JpaRepository<VideoPurchase, St
     List<VideoPurchase> findByUserIdAndVideoId(String userId, String videoId);
 
     boolean existsByUserIdAndVideoId(String userId, String videoId);
+
+    Page<VideoPurchase> findByUserIdOrderByPurchasedAtDesc(String userId, Pageable pageable);
 }
