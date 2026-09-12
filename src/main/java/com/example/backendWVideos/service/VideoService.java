@@ -19,6 +19,8 @@ import com.example.backendWVideos.repository.SubscriptionRepository;
 import com.example.backendWVideos.repository.VideoReactionRepository;
 import com.example.backendWVideos.repository.WatchedVideoRepository;
 import com.example.backendWVideos.repository.VideoPurchaseRepository;
+import com.example.backendWVideos.repository.VideoViewLogRepository;
+import com.example.backendWVideos.service.VideoViewLogService;
 import com.example.backendWVideos.entity.WatchedVideo;
 import com.example.backendWVideos.entity.VideoPurchase;
 import lombok.RequiredArgsConstructor;
@@ -40,6 +42,7 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -70,6 +73,8 @@ public class VideoService {
     private final WatchedVideoRepository watchedVideoRepository;
     private final VideoPurchaseRepository videoPurchaseRepository;
     private final UserFinancialService userFinancialService;
+    private final VideoViewLogRepository videoViewLogRepository;
+    private final VideoViewLogService videoViewLogService;
 
     /**
      * Init upload - Tạo video record và lấy upload server
@@ -545,6 +550,88 @@ public class VideoService {
     }
 
     /**
+     * Lấy video trending: lượt xem nhiều nhất trong khoảng thời gian (hours) gần nhất.
+     * Dữ liệu đếm từ bảng video_view_logs, kết quả Top-N được cache 5 phút trên Redis.
+     */
+    @Transactional(readOnly = true)
+    public Page<VideoResponse> getTrendingVideos(int hours, Pageable pageable) {
+        int size = pageable.getPageSize();
+        int page = pageable.getPageNumber();
+
+        String idsKey = "trending:ids:" + hours + ":" + page + ":" + size;
+        String totalKey = "trending:total:" + hours;
+
+        List<String> cachedIds = parseTrendingIds(redisTemplate.opsForValue().get(idsKey));
+        String rawTotal = redisTemplate.opsForValue().get(totalKey);
+        Long total = rawTotal != null ? Long.parseLong(rawTotal) : null;
+
+        List<String> ids;
+        if (cachedIds == null) {
+            LocalDateTime since = LocalDateTime.now().minusHours(hours);
+            ids = videoViewLogRepository.findTrendingVideoIds(since, pageable);
+            // Kết quả rỗng chỉ cache ngắn (60s) để video vừa xem hiện ra nhanh;
+            // kết quả có data cache 5 phút để giảm tải DB.
+            if (ids.isEmpty()) {
+                redisTemplate.opsForValue().set(idsKey, "EMPTY", Duration.ofSeconds(60));
+            } else {
+                redisTemplate.opsForValue().set(idsKey, String.join(",", ids), Duration.ofMinutes(5));
+            }
+        } else {
+            ids = cachedIds;
+        }
+
+        if (total == null) {
+            LocalDateTime since = LocalDateTime.now().minusHours(hours);
+            total = videoViewLogRepository.countTrendingVideoIds(since);
+            redisTemplate.opsForValue().set(
+                    totalKey,
+                    String.valueOf(total),
+                    ids.isEmpty() ? Duration.ofSeconds(60) : Duration.ofMinutes(5)
+            );
+        }
+
+        // Danh sách có thể thay đổi -> dùng List mutable để ghép thêm
+        List<String> resultIds = new ArrayList<>(ids);
+
+        // Nếu chưa đủ số lượng yêu cầu (vd <8) và ở trang đầu,
+        // ghép thêm video xem nhiều nhất (all-time) để lấp đầy slot, không trùng lặp
+        if (page == 0 && resultIds.size() < size) {
+            List<String> popularIds = videoRepository.findAllVideosByViews(PageRequest.of(0, size))
+                    .stream()
+                    .map(Video::getId)
+                    .toList();
+            for (String pid : popularIds) {
+                if (resultIds.size() >= size) break;
+                if (!resultIds.contains(pid)) resultIds.add(pid);
+            }
+        }
+
+        List<Video> videos = resultIds.isEmpty() ? List.of() : videoRepository.findAllById(resultIds);
+        Map<String, Video> map = videos.stream().collect(Collectors.toMap(Video::getId, v -> v));
+        List<VideoResponse> content = resultIds.stream()
+                .map(map::get)
+                .filter(Objects::nonNull)
+                .map(v -> {
+                    VideoResponse r = videoMapper.toVideoResponse(v);
+                    stripStreamInfo(r);
+                    return r;
+                })
+                .toList();
+
+        // Trang đầu: tổng = số lượng thực tế đã ghép; trang sau: dùng tổng 24h
+        long finalTotal = (page == 0) ? resultIds.size() : (total != null ? total : resultIds.size());
+        return new PageImpl<>(content, pageable, finalTotal);
+    }
+
+    private List<String> parseTrendingIds(String raw) {
+        if (raw == null) return null;
+        if ("EMPTY".equals(raw)) return List.of();
+        return Arrays.stream(raw.split(","))
+                .filter(s -> !s.isEmpty())
+                .toList();
+    }
+
+    /**
      * Lấy danh sách tất cả video (bao gồm cả không công khai) - hiển thị cho tất cả mọi người
      * Chỉ khi click vào xem mới yêu cầu đăng nhập với video không công khai
      */
@@ -808,6 +895,9 @@ public class VideoService {
         if (updatedRows > 0) {
             // Lưu cache để rate limiting (5 phút)
             redisTemplate.opsForValue().set(cacheKey, "1", Duration.ofMinutes(5));
+
+            // Ghi log lượt xem (bất đồng bộ) để tính trending 24h
+            videoViewLogService.logView(videoId, clientIp);
 
             log.info("👁️ Đã tăng lượt xem cho video: {} từ IP: {}", videoId, clientIp);
         }

@@ -229,6 +229,22 @@ public class VideoController {
                 .build();
     }
 
+    @Operation(summary = "Get trending videos", description = "Video có lượt xem nhiều nhất trong khoảng thời gian gần nhất")
+    @GetMapping("/trending")
+    public ApiResponse<Page<VideoResponse>> getTrendingVideos(
+            @RequestParam(defaultValue = "24") int hours,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        Pageable pageable = PageRequest.of(page, size);
+
+        Page<VideoResponse> videos = videoService.getTrendingVideos(hours, pageable);
+
+        return ApiResponse.<Page<VideoResponse>>builder()
+                .result(videos)
+                .build();
+    }
+
     @Operation(summary = "Get video by ID", description = "Lấy chi tiết video")
     @GetMapping("/{videoId}")
     public ApiResponse<VideoResponse> getVideoById(@PathVariable String videoId) {
