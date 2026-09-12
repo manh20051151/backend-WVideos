@@ -107,8 +107,8 @@ public interface VideoRepository extends JpaRepository<Video, String> {
     /**
      * Tăng lượt xem video một cách atomic để tối ưu performance
      */
-    @Modifying
-    @Query("UPDATE Video v SET v.views = v.views + 1 WHERE v.id = :videoId")
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("UPDATE Video v SET v.views = COALESCE(v.views, 0) + 1 WHERE v.id = :videoId")
     int incrementViewsById(@Param("videoId") String videoId);
     
     // Lấy tổng lượt xem của user

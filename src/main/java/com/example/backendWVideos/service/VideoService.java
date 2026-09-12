@@ -793,26 +793,23 @@ public class VideoService {
      */
     @Transactional
     public void incrementViews(String videoId, String clientIp) {
-        // Kiểm tra video có tồn tại không
-        Video video = videoRepository.findById(videoId)
-                .orElseThrow(() -> new AppException(ErrorCode.VIDEO_NOT_FOUND));
-        
         // Rate limiting: chỉ cho phép tăng view từ cùng IP sau 5 phút
         String cacheKey = "view_" + videoId + "_" + clientIp;
-        
+
         if (Boolean.TRUE.equals(redisTemplate.hasKey(cacheKey))) {
             log.info("⏰ Rate limit: IP {} đã xem video {} trong 5 phút qua", clientIp, videoId);
             return; // Không tăng view nếu đã xem trong 5 phút
         }
-        
-        // Sử dụng atomic update để tối ưu performance
+
+        // Tăng view bằng bulk update atomic (COALESCE tránh NULL),
+        // không load entity vào persistence context để tránh bị ghi đè về 0 khi flush
         int updatedRows = videoRepository.incrementViewsById(videoId);
-        
+
         if (updatedRows > 0) {
             // Lưu cache để rate limiting (5 phút)
             redisTemplate.opsForValue().set(cacheKey, "1", Duration.ofMinutes(5));
-            
-            log.info("👁️ Đã tăng lượt xem cho video: {} từ IP: {}", video.getTitle(), clientIp);
+
+            log.info("👁️ Đã tăng lượt xem cho video: {} từ IP: {}", videoId, clientIp);
         }
     }
 
