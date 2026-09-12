@@ -514,13 +514,14 @@ public class VideoController {
                 .build();
     }
 
-    @Operation(summary = "Get shorts feed", description = "Feed video dạng TikTok: loại trừ video đã xem, trả kèm streamUrl đã resolve")
+    @Operation(summary = "Get shorts feed", description = "Feed video dạng TikTok: loại trừ video đã xem, trả kèm streamUrl đã resolve. Khi loop=true sẽ không loại trừ video đã xem để feed lặp vô hạn.")
     @GetMapping("/shorts")
     @PreAuthorize("permitAll()")
     public ApiResponse<List<ShortsResponse>> getShorts(
             @RequestParam(required = false) String lastCreatedAt,
             @RequestParam(defaultValue = "10") int size,
-            @RequestParam(required = false) String guestId
+            @RequestParam(required = false) String guestId,
+            @RequestParam(defaultValue = "false") boolean loop
     ) {
         String userId = resolveUserId(guestId);
         LocalDateTime cursor = null;
@@ -531,7 +532,7 @@ public class VideoController {
                 cursor = null;
             }
         }
-        List<ShortsResponse> result = videoService.getShorts(userId, cursor, size);
+        List<ShortsResponse> result = videoService.getShorts(userId, cursor, size, loop);
         return ApiResponse.<List<ShortsResponse>>builder()
                 .result(result)
                 .build();

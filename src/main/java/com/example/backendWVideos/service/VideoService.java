@@ -935,12 +935,15 @@ public class VideoService {
      * Dùng keyset pagination theo createdAt để tránh OFFSET sâu.
      */
     @Transactional(readOnly = true)
-    public List<ShortsResponse> getShorts(String userId, LocalDateTime lastCreatedAt, int size) {
+    public List<ShortsResponse> getShorts(String userId, LocalDateTime lastCreatedAt, int size, boolean loop) {
         int limit = Math.min(Math.max(size, 1), 30);
         Pageable pageable = PageRequest.of(0, limit);
 
         List<Video> videos;
-        if (userId != null && !userId.isBlank()) {
+        if (loop) {
+            // Chế độ lặp vô hạn: không loại trừ video đã xem để feed quay vòng
+            videos = videoRepository.findShorts(lastCreatedAt, pageable);
+        } else if (userId != null && !userId.isBlank()) {
             videos = videoRepository.findShortsExcludingWatched(userId, lastCreatedAt, pageable);
         } else {
             videos = videoRepository.findShorts(lastCreatedAt, pageable);
@@ -948,11 +951,16 @@ public class VideoService {
 
         // Resolve streamUrl song song (dựa vào Redis cache nên lần 2 rất nhanh)
         return videos.parallelStream()
-                .map(this::toShortsResponse)
+                .map(v -> toShortsResponse(v, userId))
                 .collect(Collectors.toList());
     }
 
-    private ShortsResponse toShortsResponse(Video video) {
+    private ShortsResponse toShortsResponse(Video video, String userId) {
+        boolean paid = video.getPrice() != null && video.getPrice() > 0;
+        boolean purchased = false;
+        if (paid && userId != null && !userId.isBlank()) {
+            purchased = videoPurchaseRepository.existsByUserIdAndVideoId(userId, video.getId());
+        }
         return ShortsResponse.builder()
                 .id(video.getId())
                 .title(video.getTitle())
@@ -963,6 +971,9 @@ public class VideoService {
                 .avatarUrl(video.getUser() != null ? video.getUser().getAvatar() : null)
                 .duration(video.getDuration())
                 .views(video.getViews())
+                .price(video.getPrice())
+                .isPaid(paid)
+                .purchased(purchased)
                 .createdAt(video.getCreatedAt())
                 .build();
     }

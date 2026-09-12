@@ -133,15 +133,13 @@ public interface VideoRepository extends JpaRepository<Video, String> {
     // === Shorts feed ===
 
     @EntityGraph(attributePaths = {"categories", "user", "tags"})
-    @Query("SELECT v FROM Video v WHERE v.status = 'READY' AND v.isPublic = true " +
-           "AND (v.price IS NULL OR v.price = 0) " +
+    @Query("SELECT v FROM Video v WHERE v.status = 'READY' " +
            "AND (:lastCreatedAt IS NULL OR v.createdAt < :lastCreatedAt) " +
            "ORDER BY v.createdAt DESC")
     List<Video> findShorts(@Param("lastCreatedAt") LocalDateTime lastCreatedAt, Pageable pageable);
 
     @EntityGraph(attributePaths = {"categories", "user", "tags"})
-    @Query("SELECT v FROM Video v WHERE v.status = 'READY' AND v.isPublic = true " +
-           "AND (v.price IS NULL OR v.price = 0) " +
+    @Query("SELECT v FROM Video v WHERE v.status = 'READY' " +
            "AND (:lastCreatedAt IS NULL OR v.createdAt < :lastCreatedAt) " +
            "AND NOT EXISTS (SELECT w FROM WatchedVideo w WHERE w.userId = :userId AND w.videoId = v.id) " +
            "ORDER BY v.createdAt DESC")

@@ -19,5 +19,8 @@ public class ShortsResponse {
     private Long views;
     private Long likeCount;
     private Boolean isLiked;       // reaction của user hiện tại (nếu có)
+    private Long price;            // giá video (VND), null/0 = miễn phí
+    private Boolean isPaid;        // price != null && price > 0
+    private Boolean purchased;     // user hiện tại đã mua chưa (chỉ khi đã đăng nhập)
     private java.time.LocalDateTime createdAt; // dùng làm keyset cursor
 }
