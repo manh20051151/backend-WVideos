@@ -647,4 +647,18 @@ public class UserService {
                 .videos(videoResponses)
                 .build();
     }
+
+    /**
+     * Lấy danh sách video của kênh (bao gồm cả video riêng tư), phân trang.
+     * Dùng cho trang channel để hiển thị toàn bộ video (có nút "Xem thêm").
+     */
+    @Transactional(readOnly = true)
+    public Page<VideoResponse> getChannelVideos(String userId, int page, int size) {
+        userRepository.findById(userId)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+        int limit = Math.min(Math.max(size, 1), 50);
+        Pageable pageable = PageRequest.of(Math.max(page, 0), limit);
+        Page<Video> videos = videoRepository.findByUserIdAndStatus(userId, VideoStatus.READY, pageable);
+        return videos.map(videoMapper::toVideoResponse);
+    }
 }

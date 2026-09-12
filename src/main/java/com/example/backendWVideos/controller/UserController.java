@@ -10,6 +10,7 @@ import com.example.backendWVideos.entity.User;
 import com.example.backendWVideos.exception.AppException;
 import com.example.backendWVideos.exception.ErrorCode;
 import com.example.backendWVideos.dto.response.UserResponse;
+import com.example.backendWVideos.dto.response.VideoResponse;
 import com.example.backendWVideos.mapper.UserMapper;
 import com.example.backendWVideos.repository.UserRepository;
 import com.example.backendWVideos.service.UserService;
@@ -278,6 +279,23 @@ public class UserController {
                 .code(1000)
                 .message("OK")
                 .result(profile)
+                .build();
+    }
+
+    /**
+     * Lấy danh sách video public của kênh, phân trang (trang channel "Xem thêm")
+     */
+    @GetMapping("/{userId}/videos")
+    public ApiResponse<Page<VideoResponse>> getChannelVideos(
+            @PathVariable String userId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "12") int size
+    ) {
+        Page<VideoResponse> videos = userService.getChannelVideos(userId, page, size);
+        return ApiResponse.<Page<VideoResponse>>builder()
+                .code(1000)
+                .message("OK")
+                .result(videos)
                 .build();
     }
 
