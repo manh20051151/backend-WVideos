@@ -958,8 +958,12 @@ public class VideoService {
     private ShortsResponse toShortsResponse(Video video, String userId) {
         boolean paid = video.getPrice() != null && video.getPrice() > 0;
         boolean purchased = false;
-        if (paid && userId != null && !userId.isBlank()) {
-            purchased = videoPurchaseRepository.existsByUserIdAndVideoId(userId, video.getId());
+        boolean isOwner = false;
+        if (userId != null && !userId.isBlank() && video.getUser() != null) {
+            isOwner = userId.equals(video.getUser().getId());
+            if (paid) {
+                purchased = videoPurchaseRepository.existsByUserIdAndVideoId(userId, video.getId());
+            }
         }
         return ShortsResponse.builder()
                 .id(video.getId())
@@ -974,6 +978,7 @@ public class VideoService {
                 .price(video.getPrice())
                 .isPaid(paid)
                 .purchased(purchased)
+                .isOwner(isOwner)
                 .createdAt(video.getCreatedAt())
                 .build();
     }
