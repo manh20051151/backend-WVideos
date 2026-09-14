@@ -24,6 +24,7 @@ public class StreamtapeUploadAsyncService {
 
     private final VideoRepository videoRepository;
     private final StreamtapeService streamtapeService;
+    private final NotificationService notificationService;
 
     // Thư mục lưu file tạm
     private static final String TEMP_DIR = System.getProperty("java.io.tmpdir") + "/wvideos-uploads/";
@@ -124,6 +125,17 @@ public class StreamtapeUploadAsyncService {
 
             videoRepository.save(video);
             log.info("✅ [Streamtape - New Thread] Hoàn tất upload video {}! Status: {}, thumbnail: {}", videoId, video.getStatus(), video.getThumbnailUrl());
+
+            // Thông báo realtime cho người đăng ký khi video sẵn sàng (READY)
+            if (video.getStatus() == VideoStatus.READY && video.getUser() != null) {
+                notificationService.notifyNewVideoToSubscribers(
+                        video.getUser().getId(),
+                        video.getId(),
+                        video.getTitle(),
+                        video.getThumbnailUrl() != null ? video.getThumbnailUrl() : video.getSplashImageUrl(),
+                        video.getUser().getAvatar()
+                );
+            }
 
         } catch (Exception e) {
             log.error("❌ [Streamtape - New Thread] Upload thất bại cho video {}: {}", videoId, e.getMessage(), e);

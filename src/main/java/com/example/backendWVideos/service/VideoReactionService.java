@@ -33,6 +33,7 @@ public class VideoReactionService {
     private final VideoRepository videoRepository;
     private final UserRepository userRepository;
     private final VideoMapper videoMapper;
+    private final NotificationService notificationService;
     
     // Toggle reaction (like/dislike)
     @Transactional
@@ -75,6 +76,19 @@ public class VideoReactionService {
             reaction = videoReactionRepository.save(reaction);
             isNewReaction = true;
             log.info("User {} added {} on video {}", user.getEmail(), reactionType, videoId);
+
+            // Thông báo realtime cho chủ video khi có lượt thích mới
+            if (reactionType == VideoReactionType.LIKE && video.getUser() != null) {
+                notificationService.notifyNewLike(
+                        video.getUser().getId(),
+                        user.getId(),
+                        user.getFullName(),
+                        video.getId(),
+                        video.getTitle(),
+                        video.getThumbnailUrl() != null ? video.getThumbnailUrl() : video.getSplashImageUrl(),
+                        user.getAvatar()
+                );
+            }
         }
         
         // Lấy số lượng sau khi thay đổi

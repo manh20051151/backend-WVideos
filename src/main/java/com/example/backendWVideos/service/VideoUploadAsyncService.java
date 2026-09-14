@@ -29,6 +29,7 @@ public class VideoUploadAsyncService {
 
     private final VideoRepository videoRepository;
     private final DoodStreamService doodStreamService;
+    private final NotificationService notificationService;
     
     // Thư mục lưu file tạm
     private static final String TEMP_DIR = System.getProperty("java.io.tmpdir") + "/wvideos-uploads/";
@@ -102,6 +103,17 @@ public class VideoUploadAsyncService {
 
             videoRepository.save(video);
             log.info("✅ [Async - New Thread] Hoàn tất upload video {}! Status: {}", videoId, video.getStatus());
+
+            // Thông báo realtime cho người đăng ký khi video sẵn sàng (READY)
+            if (video.getStatus() == VideoStatus.READY && video.getUser() != null) {
+                notificationService.notifyNewVideoToSubscribers(
+                        video.getUser().getId(),
+                        video.getId(),
+                        video.getTitle(),
+                        video.getThumbnailUrl() != null ? video.getThumbnailUrl() : video.getSplashImageUrl(),
+                        video.getUser().getAvatar()
+                );
+            }
 
         } catch (Exception e) {
             log.error("❌ [Async - New Thread] Upload thất bại cho video {}: {}", videoId, e.getMessage(), e);

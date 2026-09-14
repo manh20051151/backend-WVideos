@@ -74,6 +74,7 @@ public class VideoService {
     private final WatchedVideoRepository watchedVideoRepository;
     private final VideoPurchaseRepository videoPurchaseRepository;
     private final UserFinancialService userFinancialService;
+    private final NotificationService notificationService;
     private final VideoViewLogRepository videoViewLogRepository;
     private final VideoViewLogService videoViewLogService;
 
@@ -780,6 +781,18 @@ public class VideoService {
         if (video.getUser() != null) {
             double creatorRevenue = price.doubleValue() * creatorSharePercent / 100.0;
             userFinancialService.updateUserRevenue(video.getUser().getId(), creatorRevenue);
+
+            // Thông báo realtime cho chủ video
+            notificationService.notifyVideoPurchased(
+                    video.getUser().getId(),
+                    buyer.getId(),
+                    buyer.getFullName(),
+                    video.getId(),
+                    video.getTitle(),
+                    creatorRevenue,
+                    video.getThumbnailUrl() != null ? video.getThumbnailUrl() : video.getSplashImageUrl(),
+                    buyer.getAvatar()
+            );
         }
 
         log.info("✅ User {} đã mua video {} với giá {}", buyer.getId(), videoId, price);

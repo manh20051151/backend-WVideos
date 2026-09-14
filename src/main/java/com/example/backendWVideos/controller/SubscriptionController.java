@@ -84,6 +84,26 @@ public class SubscriptionController {
                 .build());
     }
 
+    // Tắt tiếng thông báo từ kênh
+    @PostMapping("/{channelId}/mute")
+    public ResponseEntity<ApiResponse<Void>> muteChannel(@PathVariable String channelId) {
+        subscriptionService.setMuted(channelId, true);
+        return ResponseEntity.ok(ApiResponse.<Void>builder()
+                .code(1000)
+                .message("Đã tắt thông báo kênh")
+                .build());
+    }
+
+    // Bật lại thông báo từ kênh
+    @DeleteMapping("/{channelId}/mute")
+    public ResponseEntity<ApiResponse<Void>> unmuteChannel(@PathVariable String channelId) {
+        subscriptionService.setMuted(channelId, false);
+        return ResponseEntity.ok(ApiResponse.<Void>builder()
+                .code(1000)
+                .message("Đã bật lại thông báo kênh")
+                .build());
+    }
+
     // Lấy danh sách kênh đã đăng ký (thông tin chi tiết)
     @GetMapping("/my-channels")
     public ResponseEntity<ApiResponse<List<UserResponse>>> getMyChannels() {

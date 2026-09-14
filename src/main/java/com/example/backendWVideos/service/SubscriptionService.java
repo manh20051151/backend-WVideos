@@ -28,6 +28,7 @@ public class SubscriptionService {
     private final SubscriptionRepository subscriptionRepository;
     private final UserRepository userRepository;
     private final UserMapper userMapper;
+    private final NotificationService notificationService;
     
     // Đăng ký kênh
     @Transactional
@@ -52,9 +53,16 @@ public class SubscriptionService {
                 .build();
         
         subscriptionRepository.save(subscription);
-        
+
+        notificationService.notifyNewSubscriber(
+                channel.getId(),
+                subscriber.getId(),
+                subscriber.getFullName(),
+                subscriber.getAvatar()
+        );
+
         long subscriberCount = subscriptionRepository.countByChannelId(channel.getId());
-        
+
         log.info("User {} subscribed to channel {}", subscriber.getEmail(), channel.getEmail());
         
         return ApiResponse.<SubscriptionResponse>builder()
@@ -98,6 +106,19 @@ public class SubscriptionService {
                 .build();
     }
     
+    // Tắt/bật tiếng thông báo từ kênh (idempotent: chỉ áp dụng nếu đã đăng ký)
+    @Transactional
+    public void setMuted(String channelId, boolean muted) {
+        User subscriber = getCurrentUser();
+        subscriptionRepository.findBySubscriberIdAndChannelId(subscriber.getId(), channelId)
+                .ifPresent(sub -> {
+                    sub.setMuted(muted);
+                    subscriptionRepository.save(sub);
+                    log.info("User {} {} thông báo kênh {}", subscriber.getEmail(),
+                            muted ? "tắt tiếng" : "bật tiếng", channelId);
+                });
+    }
+
     // Lấy số người đăng ký của kênh
     public long getSubscriberCount(String channelId) {
         return subscriptionRepository.countByChannelId(channelId);

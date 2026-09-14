@@ -30,7 +30,12 @@ public class Subscription {
 
     @Column(name = "subscribed_at", nullable = false)
     LocalDateTime subscribedAt;
-    
+
+    // Tắt tiếng thông báo từ kênh này (khi user chọn "Tắt thông báo kênh")
+    @Column(name = "muted", nullable = false, columnDefinition = "boolean default false")
+    @Builder.Default
+    boolean muted = false;
+
     @PrePersist
     protected void onCreate() {
         subscribedAt = LocalDateTime.now();

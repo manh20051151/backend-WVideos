@@ -50,6 +50,12 @@
 			<artifactId>spring-boot-starter-validation</artifactId>
 		</dependency>
 
+		<!-- WebSocket (STOMP) cho thông báo realtime -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-websocket</artifactId>
+		</dependency>
+
 		<!-- Spring Security & OAuth2 -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>

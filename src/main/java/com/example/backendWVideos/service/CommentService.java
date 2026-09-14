@@ -33,6 +33,7 @@ public class CommentService {
     private final CommentRepository commentRepository;
     private final VideoRepository videoRepository;
     private final UserRepository userRepository;
+    private final NotificationService notificationService;
 
     @Transactional
     public CommentResponse createComment(String userEmail, String videoId, CommentRequest request) {
@@ -60,6 +61,20 @@ public class CommentService {
         long currentCount = video.getCommentsCount() != null ? video.getCommentsCount() : 0L;
         video.setCommentsCount(currentCount + 1);
         videoRepository.save(video);
+
+        // Thông báo realtime cho chủ video (nếu không tự bình luận video của mình)
+        if (video.getUser() != null) {
+            String thumbnail = video.getThumbnailUrl() != null ? video.getThumbnailUrl() : video.getSplashImageUrl();
+            notificationService.notifyNewComment(
+                    video.getUser().getId(),
+                    user.getId(),
+                    user.getFullName(),
+                    video.getId(),
+                    video.getTitle(),
+                    thumbnail,
+                    user.getAvatar()
+            );
+        }
         
         log.info("✅ Comment created successfully: {} (status: PENDING)", saved.getId());
         

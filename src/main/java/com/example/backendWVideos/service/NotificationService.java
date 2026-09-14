@@ -1,0 +1,239 @@
+package com.example.backendWVideos.service;
+
+import com.example.backendWVideos.dto.response.NotificationResponse;
+import com.example.backendWVideos.entity.Notification;
+import com.example.backendWVideos.entity.Subscription;
+import com.example.backendWVideos.entity.User;
+import com.example.backendWVideos.entity.Video;
+import com.example.backendWVideos.enums.NotificationType;
+import com.example.backendWVideos.exception.AppException;
+import com.example.backendWVideos.exception.ErrorCode;
+import com.example.backendWVideos.repository.NotificationRepository;
+import com.example.backendWVideos.repository.SubscriptionRepository;
+import com.example.backendWVideos.repository.UserRepository;
+import com.example.backendWVideos.repository.VideoRepository;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+
+@Service
+@RequiredArgsConstructor
+@Slf4j
+public class NotificationService {
+
+    private final NotificationRepository notificationRepository;
+    private final UserRepository userRepository;
+    private final SubscriptionRepository subscriptionRepository;
+    private final VideoRepository videoRepository;
+    private final SimpMessagingTemplate messagingTemplate;
+
+    private static final String USER_DESTINATION = "/queue/notifications";
+
+    private String videoThumbnail(Video video) {
+        if (video == null) return null;
+        return video.getThumbnailUrl() != null ? video.getThumbnailUrl() : video.getSplashImageUrl();
+    }
+
+    /**
+     * Tạo và lưu notification, đồng thời push realtime qua WebSocket tới người nhận.
+     */
+    public NotificationResponse create(
+            NotificationType type,
+            String recipientId,
+            String title,
+            String content,
+            String relatedId,
+            String actorId,
+            String actorName,
+            String thumbnailUrl,
+            String avatarUrl
+    ) {
+        User recipient = userRepository.findById(recipientId).orElse(null);
+        if (recipient == null) {
+            log.warn("Không tìm thấy recipient {} để gửi notification", recipientId);
+            return null;
+        }
+
+        Notification notification = Notification.builder()
+                .recipient(recipient)
+                .type(type)
+                .title(title)
+                .content(content)
+                .read(false)
+                .relatedId(relatedId)
+                .actorId(actorId)
+                .actorName(actorName)
+                .avatarUrl(avatarUrl)
+                .thumbnailUrl(thumbnailUrl)
+                .build();
+
+        Notification saved = notificationRepository.save(notification);
+        NotificationResponse dto = toResponse(saved);
+
+        try {
+            messagingTemplate.convertAndSendToUser(recipientId, USER_DESTINATION, dto);
+            log.info("📨 Đã push notification realtime tới user {}", recipientId);
+        } catch (Exception e) {
+            log.warn("Không gửi được notification realtime cho user {}: {}", recipientId, e.getMessage());
+        }
+
+        return dto;
+    }
+
+    // ==================== TRIGGERS ====================
+
+    public void notifyNewComment(String videoOwnerId, String actorId, String actorName,
+                                 String videoId, String videoTitle, String thumbnailUrl, String avatarUrl) {
+        if (videoOwnerId.equals(actorId)) return;
+        create(NotificationType.COMMENT, videoOwnerId,
+                "Bình luận mới",
+                actorName + " đã bình luận về video \"" + videoTitle + "\"",
+                videoId, actorId, actorName, thumbnailUrl, avatarUrl);
+    }
+
+    public void notifyNewSubscriber(String channelOwnerId, String subscriberId, String subscriberName, String avatarUrl) {
+        if (channelOwnerId.equals(subscriberId)) return;
+        // Tránh spam: bỏ qua nếu subscriber này từng đăng ký kênh trước đó
+        // (hủy rồi đăng ký lại không sinh thông báo mới).
+        boolean alreadyNotified = notificationRepository
+                .findByRecipientIdAndTypeAndRelatedId(channelOwnerId, NotificationType.SUBSCRIBE, subscriberId)
+                .isPresent();
+        if (alreadyNotified) return;
+        create(NotificationType.SUBSCRIBE, channelOwnerId,
+                "Người đăng ký mới",
+                subscriberName + " đã đăng ký kênh của bạn",
+                subscriberId, subscriberId, subscriberName, null, avatarUrl);
+    }
+
+    public void notifyVideoPurchased(String videoOwnerId, String buyerId, String buyerName,
+                                     String videoId, String videoTitle, Double amount, String thumbnailUrl, String avatarUrl) {
+        if (videoOwnerId.equals(buyerId)) return;
+        String money = amount != null ? String.format("%,.0f VNĐ", amount) : "";
+        create(NotificationType.PURCHASE, videoOwnerId,
+                "Video được mua",
+                buyerName + " đã mua video \"" + videoTitle + "\" (" + money + ")",
+                videoId, buyerId, buyerName, thumbnailUrl, avatarUrl);
+    }
+
+    public void notifyNewLike(String videoOwnerId, String actorId, String actorName,
+                             String videoId, String videoTitle, String thumbnailUrl, String avatarUrl) {
+        if (videoOwnerId.equals(actorId)) return;
+        create(NotificationType.LIKE, videoOwnerId,
+                "Lượt thích mới",
+                actorName + " đã thích video \"" + videoTitle + "\"",
+                videoId, actorId, actorName, thumbnailUrl, avatarUrl);
+    }
+
+    /**
+     * Thông báo cho tất cả người đăng ký khi kênh có video mới (status READY).
+     */
+    public void notifyNewVideoToSubscribers(String channelOwnerId, String videoId, String videoTitle, String thumbnailUrl, String avatarUrl) {
+        User channelOwner = userRepository.findById(channelOwnerId).orElse(null);
+        if (channelOwner == null) return;
+        String channelName = channelOwner.getFullName() != null ? channelOwner.getFullName() : "Kênh của bạn";
+
+        List<Subscription> subscribers = subscriptionRepository.findByChannelId(channelOwnerId);
+        for (Subscription sub : subscribers) {
+            String subscriberId = sub.getSubscriber().getId();
+            if (subscriberId.equals(channelOwnerId)) continue;
+            if (sub.isMuted()) continue;
+            create(NotificationType.NEW_VIDEO, subscriberId,
+                    "Video mới",
+                    channelName + " vừa đăng video mới: \"" + videoTitle + "\"",
+                    videoId, channelOwnerId, channelName, thumbnailUrl, avatarUrl);
+        }
+    }
+
+    // ==================== REST QUERIES ====================
+
+    @Transactional(readOnly = true)
+    public Page<NotificationResponse> getNotifications(String userId, Pageable pageable) {
+        return notificationRepository.findByRecipientIdOrderByCreatedAtDesc(userId, pageable)
+                .map(this::toResponse);
+    }
+
+    @Transactional(readOnly = true)
+    public long getUnreadCount(String userId) {
+        return notificationRepository.countByRecipientIdAndReadFalse(userId);
+    }
+
+    @Transactional
+    public void markAsRead(String notificationId, String userId) {
+        Notification notification = notificationRepository.findById(notificationId)
+                .orElseThrow(() -> new AppException(ErrorCode.NOTIFICATION_NOT_FOUND));
+        if (!notification.getRecipient().getId().equals(userId)) {
+            throw new AppException(ErrorCode.UNAUTHORIZED);
+        }
+        notification.setRead(true);
+        notificationRepository.save(notification);
+    }
+
+    @Transactional
+    public void markAllAsRead(String userId) {
+        List<Notification> list = notificationRepository
+                .findByRecipientIdOrderByCreatedAtDesc(userId, Pageable.unpaged())
+                .getContent();
+        list.forEach(n -> n.setRead(true));
+        notificationRepository.saveAll(list);
+    }
+
+    @Transactional
+    public void delete(String notificationId, String userId) {
+        Notification notification = notificationRepository.findById(notificationId)
+                .orElseThrow(() -> new AppException(ErrorCode.NOTIFICATION_NOT_FOUND));
+        if (!notification.getRecipient().getId().equals(userId)) {
+            throw new AppException(ErrorCode.UNAUTHORIZED);
+        }
+        notificationRepository.delete(notification);
+    }
+
+    @Transactional
+    public void deleteAllFromActor(String userId, String actorId) {
+        notificationRepository.deleteByRecipientIdAndActorId(userId, actorId);
+    }
+
+    private NotificationResponse toResponse(Notification n) {
+        // Backfill ảnh cho thông báo cũ chưa có thumbnail/avatar
+        String thumbnailUrl = n.getThumbnailUrl();
+        String avatarUrl = n.getAvatarUrl();
+
+        if (thumbnailUrl == null && n.getRelatedId() != null
+                && n.getType() != NotificationType.SUBSCRIBE) {
+            // relatedId của các loại video là videoId
+            thumbnailUrl = videoRepository.findById(n.getRelatedId())
+                    .map(v -> v.getThumbnailUrl() != null ? v.getThumbnailUrl() : v.getSplashImageUrl())
+                    .orElse(null);
+        }
+
+        if (avatarUrl == null) {
+            if (n.getActorId() != null) {
+                avatarUrl = userRepository.findById(n.getActorId())
+                        .map(User::getAvatar).orElse(null);
+            } else if (n.getType() == NotificationType.SUBSCRIBE && n.getRelatedId() != null) {
+                // SUBSCRIBE: relatedId chính là subscriberId
+                avatarUrl = userRepository.findById(n.getRelatedId())
+                        .map(User::getAvatar).orElse(null);
+            }
+        }
+
+        return NotificationResponse.builder()
+                .id(n.getId())
+                .type(n.getType())
+                .title(n.getTitle())
+                .content(n.getContent())
+                .read(n.isRead())
+                .relatedId(n.getRelatedId())
+                .actorId(n.getActorId())
+                .actorName(n.getActorName())
+                .avatarUrl(avatarUrl)
+                .thumbnailUrl(thumbnailUrl)
+                .createdAt(n.getCreatedAt())
+                .build();
+    }
+}
