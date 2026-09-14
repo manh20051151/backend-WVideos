@@ -98,6 +98,11 @@ jwt:
 # Sepay Configuration
 app:
   frontend-url: ${FRONTEND_URL:http://localhost:3000}
+
+  # Tỷ lệ doanh thu chia cho chủ video khi có giao dịch mua (%).
+  # Ví dụ: 70 nghĩa là chủ video nhận 70% giá bán, nền tảng giữ 30%.
+  revenue:
+    creator-share-percent: ${APP_REVENUE_CREATOR_SHARE_PERCENT:70}
   sepay:
     api-url: ${SEPAY_API_URL:https://my.sepay.vn/userapi/transactions/list}
     account-number: ${SEPAY_ACCOUNT_NUMBER:0375000169}

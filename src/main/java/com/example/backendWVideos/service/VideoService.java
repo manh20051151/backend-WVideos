@@ -51,6 +51,7 @@ import java.util.stream.Collectors;
 
 import com.example.backendWVideos.entity.Category;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.transaction.annotation.Propagation;
 
@@ -75,6 +76,9 @@ public class VideoService {
     private final UserFinancialService userFinancialService;
     private final VideoViewLogRepository videoViewLogRepository;
     private final VideoViewLogService videoViewLogService;
+
+    @Value("${app.revenue.creator-share-percent:70}")
+    private double creatorSharePercent;
 
     /**
      * Init upload - Tạo video record và lấy upload server
@@ -772,9 +776,10 @@ public class VideoService {
                 .price(price)
                 .build());
 
-        // Cộng doanh thu cho chủ video
+        // Cộng doanh thu cho chủ video (theo tỷ lệ chia sẻ cấu hình)
         if (video.getUser() != null) {
-            userFinancialService.updateUserRevenue(video.getUser().getId(), price.doubleValue());
+            double creatorRevenue = price.doubleValue() * creatorSharePercent / 100.0;
+            userFinancialService.updateUserRevenue(video.getUser().getId(), creatorRevenue);
         }
 
         log.info("✅ User {} đã mua video {} với giá {}", buyer.getId(), videoId, price);
