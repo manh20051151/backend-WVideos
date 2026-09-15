@@ -703,9 +703,9 @@ public class VideoService {
                         currentUser.getId(), video.getUser().getId());
                 response.setIsSubscribed(isSubscribed);
                 
-                // Lấy reaction của user
-                var userReaction = videoReactionRepository.findByUserIdAndVideoId(currentUser.getId(), videoId);
-                userReaction.ifPresent(r -> response.setUserReaction(r.getReactionType()));
+                // Lấy reaction của user (lấy bản ghi đầu tiên nếu tồn tại trùng lặp)
+                var userReactions = videoReactionRepository.findByUserIdAndVideoId(currentUser.getId(), videoId);
+                userReactions.stream().findFirst().ifPresent(r -> response.setUserReaction(r.getReactionType()));
             }
         }
         

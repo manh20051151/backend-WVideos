@@ -101,9 +101,9 @@ public class NotificationService {
         if (channelOwnerId.equals(subscriberId)) return;
         // Tránh spam: bỏ qua nếu subscriber này từng đăng ký kênh trước đó
         // (hủy rồi đăng ký lại không sinh thông báo mới).
-        boolean alreadyNotified = notificationRepository
+        boolean alreadyNotified = !notificationRepository
                 .findByRecipientIdAndTypeAndRelatedId(channelOwnerId, NotificationType.SUBSCRIBE, subscriberId)
-                .isPresent();
+                .isEmpty();
         if (alreadyNotified) return;
         create(NotificationType.SUBSCRIBE, channelOwnerId,
                 "Người đăng ký mới",

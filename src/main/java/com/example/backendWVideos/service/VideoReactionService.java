@@ -22,6 +22,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -48,8 +49,15 @@ public class VideoReactionService {
             throw new AppException(ErrorCode.INVALID_DATA);
         }
         
-        // Kiểm tra reaction hiện tại
-        Optional<VideoReaction> existingReaction = videoReactionRepository.findByUserIdAndVideoId(user.getId(), videoId);
+        // Kiểm tra reaction hiện tại (có thể tồn tại bản ghi trùng do dữ liệu cũ)
+        List<VideoReaction> existingReactions = videoReactionRepository.findByUserIdAndVideoId(user.getId(), videoId);
+        // Dọn dẹp bản ghi trùng lặp: giữ 1, xóa các bản còn lại
+        if (existingReactions.size() > 1) {
+            for (int i = 1; i < existingReactions.size(); i++) {
+                videoReactionRepository.delete(existingReactions.get(i));
+            }
+        }
+        Optional<VideoReaction> existingReaction = existingReactions.stream().findFirst();
         
         VideoReaction reaction;
         boolean isNewReaction = false;
@@ -97,6 +105,7 @@ public class VideoReactionService {
         
         // Lấy reaction hiện tại của user (null nếu đã xóa)
         VideoReactionType userReaction = videoReactionRepository.findByUserIdAndVideoId(user.getId(), videoId)
+                .stream().findFirst()
                 .map(VideoReaction::getReactionType)
                 .orElse(null);
         
@@ -120,6 +129,7 @@ public class VideoReactionService {
         try {
             User user = getCurrentUser();
             userReaction = videoReactionRepository.findByUserIdAndVideoId(user.getId(), videoId)
+                    .stream().findFirst()
                     .map(VideoReaction::getReactionType)
                     .orElse(null);
         } catch (Exception e) {

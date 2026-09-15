@@ -2,6 +2,7 @@ package com.example.backendWVideos.repository;
 
 import com.example.backendWVideos.entity.Subscription;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -30,6 +31,13 @@ public interface SubscriptionRepository extends JpaRepository<Subscription, Stri
     // Lấy danh sách kênh đã đăng ký
     List<Subscription> findBySubscriberId(String subscriberId);
     
-    // Kiểm tra đã đăng ký - trả về Optional
-    Optional<Subscription> findBySubscriberIdAndChannelId(String subscriberId, String channelId);
+    // Trả về List thay vì Optional để tránh lỗi NonUniqueResult khi tồn tại dữ liệu trùng lặp
+    List<Subscription> findBySubscriberIdAndChannelId(String subscriberId, String channelId);
+
+    // Dọn dẹp bản ghi đăng ký trùng lặp: giữ lại 1 bản ghi (id nhỏ nhất) cho mỗi cặp (subscriber_id, channel_id)
+    @Modifying
+    @Query(value = "DELETE FROM subscriptions WHERE id NOT IN (" +
+            "SELECT min_id FROM (SELECT MIN(id) AS min_id FROM subscriptions GROUP BY subscriber_id, channel_id) AS t)",
+            nativeQuery = true)
+    void deleteDuplicateSubscriptions();
 }

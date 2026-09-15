@@ -3,7 +3,10 @@ package com.example.backendWVideos.config;
 import com.example.backendWVideos.entity.NavItem;
 import com.example.backendWVideos.entity.Role;
 import com.example.backendWVideos.repository.NavItemRepository;
+import com.example.backendWVideos.repository.NotificationRepository;
 import com.example.backendWVideos.repository.RoleRepository;
+import com.example.backendWVideos.repository.SubscriptionRepository;
+import com.example.backendWVideos.repository.VideoReactionRepository;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -63,6 +66,42 @@ public class ApplicationInitConfig {
                 }
             }
             log.info("Đã đảm bảo {} mục menu điều hướng mặc định tồn tại", defaultNavItems.length);
+        };
+    }
+
+    // Dọn dẹp bản ghi reaction trùng lặp (cùng user + video) do dữ liệu cũ
+    @Bean
+    ApplicationRunner reactionDataCleanup(VideoReactionRepository videoReactionRepository) {
+        return args -> {
+            try {
+                videoReactionRepository.deleteDuplicateReactions();
+            } catch (Exception e) {
+                log.warn("Không thể dọn dẹp reaction trùng lặp: {}", e.getMessage());
+            }
+        };
+    }
+
+    // Dọn dẹp bản ghi đăng ký (subscription) trùng lặp (cùng subscriber + channel) do dữ liệu cũ
+    @Bean
+    ApplicationRunner subscriptionDataCleanup(SubscriptionRepository subscriptionRepository) {
+        return args -> {
+            try {
+                subscriptionRepository.deleteDuplicateSubscriptions();
+            } catch (Exception e) {
+                log.warn("Không thể dọn dẹp subscription trùng lặp: {}", e.getMessage());
+            }
+        };
+    }
+
+    // Dọn dẹp thông báo (notification) trùng lặp (cùng recipient + type + relatedId) do dữ liệu cũ
+    @Bean
+    ApplicationRunner notificationDataCleanup(NotificationRepository notificationRepository) {
+        return args -> {
+            try {
+                notificationRepository.deleteDuplicateNotifications();
+            } catch (Exception e) {
+                log.warn("Không thể dọn dẹp notification trùng lặp: {}", e.getMessage());
+            }
         };
     }
 }

@@ -85,9 +85,18 @@ public class SubscriptionService {
         User channel = userRepository.findById(request.getChannelId())
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
         
-        Subscription subscription = subscriptionRepository.findBySubscriberIdAndChannelId(
-                subscriber.getId(), channel.getId())
-                .orElseThrow(() -> new AppException(ErrorCode.NOT_SUBSCRIBED));
+        // Lấy danh sách đăng ký (có thể tồn tại trùng lặp do dữ liệu cũ) - giữ 1, xóa các bản còn lại
+        List<Subscription> subscriptions = subscriptionRepository.findBySubscriberIdAndChannelId(
+                subscriber.getId(), channel.getId());
+        if (subscriptions.isEmpty()) {
+            throw new AppException(ErrorCode.NOT_SUBSCRIBED);
+        }
+        if (subscriptions.size() > 1) {
+            for (int i = 1; i < subscriptions.size(); i++) {
+                subscriptionRepository.delete(subscriptions.get(i));
+            }
+        }
+        Subscription subscription = subscriptions.get(0);
         
         subscriptionRepository.delete(subscription);
         
@@ -111,6 +120,7 @@ public class SubscriptionService {
     public void setMuted(String channelId, boolean muted) {
         User subscriber = getCurrentUser();
         subscriptionRepository.findBySubscriberIdAndChannelId(subscriber.getId(), channelId)
+                .stream().findFirst()
                 .ifPresent(sub -> {
                     sub.setMuted(muted);
                     subscriptionRepository.save(sub);
