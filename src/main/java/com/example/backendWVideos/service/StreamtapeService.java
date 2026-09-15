@@ -262,7 +262,7 @@ public class StreamtapeService {
         String url = apiBaseUrl + getsplashEndpoint + "?file=" + fileId
                 + "&login=" + apiLogin + "&key=" + apiKey;
 
-        int[] retryDelaysMs = {0, 3000, 8000, 15000, 25000};
+        int[] retryDelaysMs = {0, 10000, 20000, 30000, 45000, 60000, 90000, 120000};
         for (int i = 0; i < retryDelaysMs.length; i++) {
             if (retryDelaysMs[i] > 0) {
                 try {
