@@ -1,9 +1,9 @@
 package com.example.backendWVideos.config;
 
+import com.example.backendWVideos.entity.NavItem;
 import com.example.backendWVideos.entity.Role;
-import com.example.backendWVideos.entity.User;
+import com.example.backendWVideos.repository.NavItemRepository;
 import com.example.backendWVideos.repository.RoleRepository;
-import com.example.backendWVideos.repository.UserRepository;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -11,10 +11,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.security.crypto.password.PasswordEncoder;
-
-import java.util.HashSet;
-import java.util.Set;
 
 @Slf4j
 @Configuration
@@ -22,51 +18,51 @@ import java.util.Set;
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class ApplicationInitConfig {
 
-    PasswordEncoder passwordEncoder;
-
     @Bean
-    ApplicationRunner applicationRunner(UserRepository userRepository, RoleRepository roleRepository){
+    ApplicationRunner applicationRunner(RoleRepository roleRepository, NavItemRepository navItemRepository){
         return  args -> {
-            Role adminRole = roleRepository.findByName("ADMIN")
-                    .orElseGet(() -> {
-                        Role newAdminRole = Role.builder()
-                                .name("ADMIN")
-                                .description("Quản trị viên hệ thống")
-                                .build();
+            roleRepository.findByName("ADMIN")
+                    .orElseGet(() -> roleRepository.save(Role.builder()
+                            .name("ADMIN")
+                            .description("Quản trị viên hệ thống")
+                            .build()));
 
-                        // Có thể thêm permissions mặc định ở đây nếu cần
-                        // newAdminRole.setPermissions(defaultAdminPermissions());
+            roleRepository.findByName("GUEST")
+                    .orElseGet(() -> roleRepository.save(Role.builder()
+                            .name("GUEST")
+                            .description("Thành viên vãng lai")
+                            .build()));
 
-                        return roleRepository.save(newAdminRole);
-                    });
-            Role adminGuest = roleRepository.findByName("GUEST")
-                    .orElseGet(() -> {
-                        Role newAdminRole = Role.builder()
-                                .name("GUEST")
-                                .description("Thành viên vãng lai")
-                                .build();
+            // Đảm bảo 10 mục menu điều hướng mặc định luôn tồn tại (upsert theo slug)
+            String[][] defaultNavItems = {
+                    { "Tin tức", "/news" },
+                    { "Shorts", "/shorts" },
+                    { "Kênh Đã Đăng Ký", "/kenh-da-dang-ky" },
+                    { "Clip Sao Tạo Nội Dung", "/clip-sao-tao-noi-dung" },
+                    { "Clip Sao Hát Nhép", "/clip-sao-hat-nhep" },
+                    { "Ảnh Sao", "/anh-sao" },
+                    { "Thể Loại", "/the-loai" },
+                    { "Khác", "/khac" },
+                    { "Đóng Góp", "/dong-gop" },
+                    { "Thông báo", "/thong-bao" },
+            };
 
-                        // Có thể thêm permissions mặc định ở đây nếu cần
-                        // newAdminRole.setPermissions(defaultAdminPermissions());
-
-                        return roleRepository.save(newAdminRole);
-                    });
-//            if (userRepository.findByUsername("admin").isEmpty()){
-////                var roles = new HashSet<String>();
-////                roles.add(Role.ADMIN.name());
-//                Role roleUser = roleRepository.findByName("ADMIN")
-//                        .orElseThrow(() -> new RuntimeException("Role ADMIN not found"));
-//
-//                Set<Role> roles = new HashSet<>();
-//                roles.add(roleUser);
-//                User user = User.builder()
-//                        .username("admin")
-//                        .password(passwordEncoder.encode("admin"))
-//                        .roles(roles)
-//                        .build();
-//                userRepository.save(user);
-//                log.warn("Đã tạo một user admin mặc định (password: admin)");
-//            }
+            int order = (int) navItemRepository.count();
+            for (String[] item : defaultNavItems) {
+                String slug = item[1].substring(1); // bỏ dấu '/' đầu
+                if (navItemRepository.findBySlug(slug).isEmpty()) {
+                    navItemRepository.save(NavItem.builder()
+                            .label(item[0])
+                            .slug(slug)
+                            .href(item[1])
+                            .isActive(true)
+                            .openNewTab(false)
+                            .sortOrder(order++)
+                            .createdByName("Hệ thống")
+                            .build());
+                }
+            }
+            log.info("Đã đảm bảo {} mục menu điều hướng mặc định tồn tại", defaultNavItems.length);
         };
     }
 }

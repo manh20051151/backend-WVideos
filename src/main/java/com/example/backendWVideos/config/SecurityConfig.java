@@ -51,7 +51,9 @@ public class SecurityConfig {
         "/videos/*/stream-url",  // Stream URL proxy
         "/videos/*/comments",  // Comments
         "/videos/*/related",  // Related videos
-        "/categories"      // Public categories
+        "/categories",     // Public categories
+        "/nav-items",       // Public navigation menu
+        "/nav-items/**"     // Public navigation menu detail
     };
 
     private final String[] PUBLIC_ENDPOINTS_POST = {
