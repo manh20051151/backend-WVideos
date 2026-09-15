@@ -105,6 +105,12 @@ public enum ErrorCode {
     // Subscription errors
     ALREADY_SUBSCRIBED(9801, "Bạn đã đăng ký kênh này rồi", HttpStatus.BAD_REQUEST),
     NOT_SUBSCRIBED(9802, "Bạn chưa đăng ký kênh này", HttpStatus.BAD_REQUEST),
+
+    // News errors
+    NEWS_NOT_FOUND(9901, "Không tìm thấy tin tức", HttpStatus.NOT_FOUND),
+    NEWS_CATEGORY_NOT_FOUND(9902, "Không tìm thấy danh mục tin tức", HttpStatus.NOT_FOUND),
+    NEWS_CATEGORY_NAME_EXISTED(9903, "Tên danh mục tin tức đã tồn tại", HttpStatus.BAD_REQUEST),
+    NEWS_CATEGORY_SLUG_EXISTED(9904, "Slug danh mục tin tức đã tồn tại", HttpStatus.BAD_REQUEST),
     ;
 
     ErrorCode(int code, String message, HttpStatusCode statusCode) {
