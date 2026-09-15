@@ -664,7 +664,8 @@ public class UserService {
         userRepository.findById(userId)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
         int limit = Math.min(Math.max(size, 1), 50);
-        Pageable pageable = PageRequest.of(Math.max(page, 0), limit);
+        Pageable pageable = PageRequest.of(Math.max(page, 0), limit,
+                org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "createdAt"));
         Page<Video> videos = videoRepository.findByUserIdAndStatus(userId, VideoStatus.READY, pageable);
         return videos.map(videoMapper::toVideoResponse);
     }
