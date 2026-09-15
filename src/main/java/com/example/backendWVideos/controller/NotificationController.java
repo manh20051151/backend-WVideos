@@ -1,5 +1,6 @@
 package com.example.backendWVideos.controller;
 
+import com.example.backendWVideos.dto.request.AdminNotificationRequest;
 import com.example.backendWVideos.dto.request.ApiResponse;
 import com.example.backendWVideos.dto.response.NotificationResponse;
 import com.example.backendWVideos.entity.User;
@@ -9,11 +10,13 @@ import com.example.backendWVideos.repository.UserRepository;
 import com.example.backendWVideos.service.NotificationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
@@ -34,6 +37,12 @@ public class NotificationController {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
         return user.getId();
+    }
+
+    private User getCurrentUser() {
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        return userRepository.findByEmail(email)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
     }
 
     @Operation(summary = "Lấy danh sách thông báo", description = "Phân trang, mới nhất trước")
@@ -97,6 +106,30 @@ public class NotificationController {
         notificationService.deleteAllFromActor(userId, actorId);
         return ApiResponse.<Void>builder()
                 .message("Đã xóa tất cả thông báo từ nguồn này")
+                .build();
+    }
+
+    @Operation(
+            summary = "Admin gửi thông báo đến người dùng",
+            description = "Truyền recipientId hoặc recipientEmail để gửi cho một người dùng cụ thể. " +
+                    "Không truyền cả hai để gửi (broadcast) cho tất cả người dùng."
+    )
+    @PostMapping("/admin/send")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<Long> adminSendNotification(@Valid @RequestBody AdminNotificationRequest request) {
+        User admin = getCurrentUser();
+        long sentCount = notificationService.adminSend(
+                admin.getId(),
+                admin.getFullName(),
+                admin.getAvatar(),
+                request.getRecipientId(),
+                request.getRecipientEmail(),
+                request.getTitle(),
+                request.getContent()
+        );
+        return ApiResponse.<Long>builder()
+                .message("Đã gửi thông báo đến " + sentCount + " người dùng")
+                .result(sentCount)
                 .build();
     }
 }

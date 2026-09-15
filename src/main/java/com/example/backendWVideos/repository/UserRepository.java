@@ -17,6 +17,10 @@ public interface UserRepository extends JpaRepository<User, String> {
     Optional<User> findByEmail(String email);
     boolean existsByEmail(String email);
 
+    @Query("SELECT u FROM User u WHERE LOWER(u.fullName) LIKE LOWER(CONCAT('%', :kw, '%')) " +
+            "OR LOWER(u.email) LIKE LOWER(CONCAT('%', :kw, '%'))")
+    org.springframework.data.domain.Page<User> searchByKeyword(@Param("kw") String kw, org.springframework.data.domain.Pageable pageable);
+
     // Bỏ qua @SQLRestriction(locked = false) khi cần kiểm tra login, để phân biệt rõ user bị khóa
     @Query(value = "SELECT * FROM users WHERE email = :email", nativeQuery = true)
     Optional<User> findByEmailIncludingLocked(@Param("email") String email);

@@ -134,6 +134,13 @@ public class UserService {
                 .map(userMapper::toUserResponse).toList();
     }
 
+    public org.springframework.data.domain.Page<UserResponse> searchUsers(String keyword, int page, int size) {
+        org.springframework.data.domain.Pageable pageable =
+                org.springframework.data.domain.PageRequest.of(page, size);
+        return userRepository.searchByKeyword(keyword, pageable)
+                .map(userMapper::toUserResponse);
+    }
+
 
 
     @PostAuthorize("returnObject.email == authentication.name")

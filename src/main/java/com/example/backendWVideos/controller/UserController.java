@@ -79,6 +79,17 @@ public class UserController {
                 .build();
     }
 
+    @GetMapping("/search")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<org.springframework.data.domain.Page<UserResponse>> searchUsers(
+            @RequestParam String keyword,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        return ApiResponse.<org.springframework.data.domain.Page<UserResponse>>builder()
+                .result(userService.searchUsers(keyword, page, size))
+                .build();
+    }
+
 
     @GetMapping("/{userId}")
     ApiResponse<UserResponse> getUser(@PathVariable String userId){

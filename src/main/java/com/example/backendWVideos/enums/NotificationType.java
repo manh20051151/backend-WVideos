@@ -5,5 +5,6 @@ public enum NotificationType {
     SUBSCRIBE,     // Có người đăng ký kênh của bạn
     PURCHASE,      // Có người mua video có phí của bạn
     LIKE,          // Có người thích video của bạn
-    NEW_VIDEO      // Kênh bạn đã đăng ký có video mới
+    NEW_VIDEO,     // Kênh bạn đã đăng ký có video mới
+    ANNOUNCEMENT   // Thông báo từ quản trị viên gửi đến người dùng
 }

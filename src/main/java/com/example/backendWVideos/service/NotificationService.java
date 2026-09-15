@@ -150,6 +150,46 @@ public class NotificationService {
         }
     }
 
+    /**
+     * Quản trị viên gửi thông báo.
+     * - Nếu có recipientId/recipientEmail: gửi cho một người dùng cụ thể.
+     * - Ngược lại: broadcast cho tất cả người dùng (trừ chính admin).
+     * Trả về số lượng người dùng đã nhận thông báo.
+     */
+    public long adminSend(String adminId, String adminName, String adminAvatar,
+                         String recipientId, String recipientEmail,
+                         String title, String content) {
+        if (recipientId != null || recipientEmail != null) {
+            User recipient = resolveRecipient(recipientId, recipientEmail);
+            if (recipient == null) {
+                throw new AppException(ErrorCode.USER_NOT_EXISTED);
+            }
+            create(NotificationType.ANNOUNCEMENT, recipient.getId(),
+                    title, content, null, adminId, adminName, null, adminAvatar);
+            return 1;
+        }
+
+        List<User> users = userRepository.findAll();
+        long count = 0;
+        for (User u : users) {
+            if (u.getId().equals(adminId)) continue;
+            create(NotificationType.ANNOUNCEMENT, u.getId(),
+                    title, content, null, adminId, adminName, null, adminAvatar);
+            count++;
+        }
+        return count;
+    }
+
+    private User resolveRecipient(String recipientId, String recipientEmail) {
+        if (recipientId != null) {
+            return userRepository.findById(recipientId).orElse(null);
+        }
+        if (recipientEmail != null) {
+            return userRepository.findByEmail(recipientEmail).orElse(null);
+        }
+        return null;
+    }
+
     // ==================== REST QUERIES ====================
 
     @Transactional(readOnly = true)
