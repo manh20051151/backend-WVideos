@@ -990,6 +990,7 @@ public class VideoService {
                 .thumbnailUrl(video.getThumbnailUrl())
                 .splashImageUrl(video.getSplashImageUrl())
                 .userFullName(video.getUser() != null ? video.getUser().getFullName() : null)
+                .userId(video.getUser() != null ? video.getUser().getId() : null)
                 .avatarUrl(video.getUser() != null ? video.getUser().getAvatar() : null)
                 .duration(video.getDuration())
                 .views(video.getViews())
