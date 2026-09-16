@@ -10,4 +10,7 @@ import java.util.List;
 public interface ProcessedTransactionRepository extends JpaRepository<ProcessedTransaction, String> {
     boolean existsByTransactionId(String transactionId);
     List<ProcessedTransaction> findAllByOrderByProcessedAtDesc();
+
+    // Lịch sử nạp tiền của một user (dùng cho trang tài chính cá nhân)
+    List<ProcessedTransaction> findByUserIdOrderByProcessedAtDesc(String userId);
 }

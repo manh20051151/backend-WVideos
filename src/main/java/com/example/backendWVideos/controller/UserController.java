@@ -4,6 +4,7 @@ package com.example.backendWVideos.controller;
 import com.example.backendWVideos.dto.request.*;
 import com.example.backendWVideos.dto.request.ChangePasswordRequest;
 import com.example.backendWVideos.dto.request.ApiResponse;
+import com.example.backendWVideos.dto.response.FinancialHistoryResponse;
 import com.example.backendWVideos.dto.response.UserFinancialInfoDTO;
 import com.example.backendWVideos.dto.response.UserProfileResponse;
 import com.example.backendWVideos.entity.User;
@@ -16,6 +17,7 @@ import com.example.backendWVideos.repository.UserRepository;
 import com.example.backendWVideos.service.UserService;
 import com.example.backendWVideos.service.UserFinancialService;
 import jakarta.validation.Valid;
+import io.swagger.v3.oas.annotations.Operation;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -267,6 +269,16 @@ public class UserController {
                 .code(1000)
                 .message("Xóa thông tin ngân hàng thành công")
                 .result(userResponse)
+                .build();
+    }
+
+    @GetMapping("/my-financial-history")
+    @Operation(summary = "Lịch sử tài chính cá nhân", description = "Biến động số dư, doanh thu, thống kê theo tháng của chính user đăng nhập")
+    public ApiResponse<FinancialHistoryResponse> getMyFinancialHistory() {
+        return ApiResponse.<FinancialHistoryResponse>builder()
+                .code(1000)
+                .message("Lấy lịch sử tài chính thành công")
+                .result(userFinancialService.getMyFinancialHistory())
                 .build();
     }
 
