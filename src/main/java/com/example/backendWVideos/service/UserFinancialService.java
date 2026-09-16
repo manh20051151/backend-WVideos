@@ -124,8 +124,7 @@ public class UserFinancialService {
                     .id(p.getId() + "-rev")
                     .type("CREATOR_REVENUE")
                     .title("Doanh thu người sáng tạo")
-                    .description(videoTitles.getOrDefault(p.getVideoId(), "Video không còn tồn tại")
-                            + " · chia " + (int) creatorSharePercent + "% từ giá " + formatVnd(gross))
+                    .description(videoTitles.getOrDefault(p.getVideoId(), "Video không còn tồn tại"))
                     .amount(earnings)
                     .direction("IN")
                     .occurredAt(p.getPurchasedAt())
@@ -214,10 +213,6 @@ public class UserFinancialService {
 
     private double round(double v) {
         return Math.round(v * 100.0) / 100.0;
-    }
-
-    private String formatVnd(double v) {
-        return String.format("%,.0fđ", v);
     }
 
     public UserFinancialInfoDTO getUserFinancialInfo(String userId) {
