@@ -828,6 +828,19 @@ public class VideoService {
         if (request.getIsPublic() != null) {
             video.setIsPublic(request.getIsPublic());
         }
+
+        // Cập nhật giá video (0 = miễn phí, null = giữ nguyên giá hiện tại)
+        if (request.getPrice() != null) {
+            if (request.getPrice() < 0) {
+                throw new AppException(ErrorCode.INVALID_REQUEST);
+            }
+            video.setPrice(request.getPrice());
+        }
+
+        // Video có phí bắt buộc phải công khai (đồng bộ quy tắc với trang upload)
+        if (video.getPrice() != null && video.getPrice() > 0) {
+            video.setIsPublic(true);
+        }
         
         // Cập nhật categories (yêu cầu ít nhất 1, tối đa 10 categories)
         if (request.getCategoryIds() != null) {

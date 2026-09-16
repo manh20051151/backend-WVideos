@@ -30,4 +30,7 @@ public class VideoUpdateRequest {
     
     // URL thumbnail tùy chọn (có thể null để xóa thumbnail)
     private String thumbnailUrl;
+
+    // Giá video (VND), 0 = miễn phí, null = giữ nguyên giá hiện tại
+    private Long price;
 }

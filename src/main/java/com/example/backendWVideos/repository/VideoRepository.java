@@ -131,15 +131,18 @@ public interface VideoRepository extends JpaRepository<Video, String> {
                                  Pageable pageable);
 
     // === Shorts feed ===
+    // Chỉ video dưới 2 phút (120 giây) mới được hiển thị trong feed shorts
 
     @EntityGraph(attributePaths = {"categories", "user", "tags"})
     @Query("SELECT v FROM Video v WHERE v.status = 'READY' " +
+           "AND v.duration IS NOT NULL AND v.duration < 120 " +
            "AND (:lastCreatedAt IS NULL OR v.createdAt < :lastCreatedAt) " +
            "ORDER BY v.createdAt DESC")
     List<Video> findShorts(@Param("lastCreatedAt") LocalDateTime lastCreatedAt, Pageable pageable);
 
     @EntityGraph(attributePaths = {"categories", "user", "tags"})
     @Query("SELECT v FROM Video v WHERE v.status = 'READY' " +
+           "AND v.duration IS NOT NULL AND v.duration < 120 " +
            "AND (:lastCreatedAt IS NULL OR v.createdAt < :lastCreatedAt) " +
            "AND NOT EXISTS (SELECT w FROM WatchedVideo w WHERE w.userId = :userId AND w.videoId = v.id) " +
            "ORDER BY v.createdAt DESC")
