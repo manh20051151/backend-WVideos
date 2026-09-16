@@ -81,6 +81,8 @@ public enum ErrorCode {
     WITHDRAWAL_REQUEST_ALREADY_PROCESSED(9302, "Yêu cầu rút tiền đã được xử lý", HttpStatus.BAD_REQUEST),
     BANK_INFO_NOT_FOUND(9303, "Vui lòng cập nhật thông tin ngân hàng trước khi rút tiền", HttpStatus.BAD_REQUEST),
     INSUFFICIENT_REVENUE(9304, "Doanh thu không đủ để rút tiền", HttpStatus.BAD_REQUEST),
+    WITHDRAWAL_REQUEST_PENDING_EXISTS(9305, "Bạn đang có yêu cầu rút tiền chưa được xử lý", HttpStatus.BAD_REQUEST),
+    WITHDRAWAL_AMOUNT_TOO_LOW(9306, "Số tiền rút tối thiểu là 500.000 VNĐ", HttpStatus.BAD_REQUEST),
     
     // Favorite errors
     FAVORITE_ALREADY_EXISTS(9401, "Tài liệu đã có trong danh sách yêu thích", HttpStatus.BAD_REQUEST),
