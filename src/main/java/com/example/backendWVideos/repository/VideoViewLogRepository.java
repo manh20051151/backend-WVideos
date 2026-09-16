@@ -37,4 +37,35 @@ public interface VideoViewLogRepository extends JpaRepository<VideoViewLog, Long
     @Modifying
     @Query(value = "DELETE FROM video_view_logs WHERE viewed_at < :before", nativeQuery = true)
     int deleteBefore(@Param("before") LocalDateTime before);
+
+    // === Thống kê kênh: lượt xem theo chủ video ===
+
+    // Số lượt xem theo từng ngày của các video thuộc về userId (từ mốc since)
+    @Query(value = """
+            SELECT DATE(vl.viewed_at) AS d, COUNT(*) AS c
+            FROM video_view_logs vl
+            JOIN videos v ON v.id = vl.video_id
+            WHERE v.user_id = :userId AND vl.viewed_at >= :since
+            GROUP BY DATE(vl.viewed_at)
+            ORDER BY d
+            """, nativeQuery = true)
+    List<Object[]> countOwnerViewsPerDay(@Param("userId") String userId, @Param("since") LocalDateTime since);
+
+    // Tổng lượt xem của kênh trong khoảng thời gian (từ mốc since)
+    @Query(value = """
+            SELECT COUNT(*)
+            FROM video_view_logs vl
+            JOIN videos v ON v.id = vl.video_id
+            WHERE v.user_id = :userId AND vl.viewed_at >= :since
+            """, nativeQuery = true)
+    long countOwnerViewsSince(@Param("userId") String userId, @Param("since") LocalDateTime since);
+
+    // Bản ghi lượt xem sớm nhất trên các video của kênh - dùng cho xu hướng "toàn bộ thời gian"
+    @Query(value = """
+            SELECT MIN(vl.viewed_at)
+            FROM video_view_logs vl
+            JOIN videos v ON v.id = vl.video_id
+            WHERE v.user_id = :userId
+            """, nativeQuery = true)
+    LocalDateTime oldestOwnerViewAt(@Param("userId") String userId);
 }

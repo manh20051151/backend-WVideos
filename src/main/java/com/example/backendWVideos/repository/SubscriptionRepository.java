@@ -40,4 +40,22 @@ public interface SubscriptionRepository extends JpaRepository<Subscription, Stri
             "SELECT min_id FROM (SELECT MIN(id) AS min_id FROM subscriptions GROUP BY subscriber_id, channel_id) AS t)",
             nativeQuery = true)
     void deleteDuplicateSubscriptions();
+
+    // Số người đăng ký mới từ mốc thời gian (cho card "30 ngày")
+    long countByChannelIdAndSubscribedAtAfter(String channelId, java.time.LocalDateTime after);
+
+    // Người đăng ký mới theo ngày của kênh (từ mốc since)
+    @Query(value = """
+            SELECT DATE(s.subscribed_at) AS d, COUNT(*) AS c
+            FROM subscriptions s
+            WHERE s.channel_id = :channelId AND s.subscribed_at >= :since
+            GROUP BY DATE(s.subscribed_at)
+            ORDER BY d
+            """, nativeQuery = true)
+    List<Object[]> countDailyNewSubscribers(@Param("channelId") String channelId,
+                                            @Param("since") java.time.LocalDateTime since);
+
+    // Thời điểm có người đăng ký đầu tiên của kênh - dùng cho xu hướng "toàn bộ thời gian"
+    @Query("SELECT MIN(s.subscribedAt) FROM Subscription s WHERE s.channel.id = :channelId")
+    java.time.LocalDateTime oldestChannelSubscriberAt(@Param("channelId") String channelId);
 }

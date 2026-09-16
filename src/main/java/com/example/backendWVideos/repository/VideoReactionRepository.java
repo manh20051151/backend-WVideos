@@ -33,4 +33,14 @@ public interface VideoReactionRepository extends JpaRepository<VideoReaction, St
             "SELECT min_id FROM (SELECT MIN(id) AS min_id FROM video_reactions GROUP BY user_id, video_id) AS t)",
             nativeQuery = true)
     void deleteDuplicateReactions();
+
+    // Tổng lượt thích trên mọi video thuộc kênh userId
+    @Query("SELECT COUNT(r) FROM VideoReaction r WHERE r.video.user.id = :userId " +
+           "AND r.reactionType = com.example.backendWVideos.enums.VideoReactionType.LIKE")
+    long countOwnerLikes(@Param("userId") String userId);
+
+    // Số lượt thích theo từng video của kênh (videoId, count) - phục vụ bảng top video
+    @Query("SELECT r.video.id, COUNT(r) FROM VideoReaction r WHERE r.video.user.id = :userId " +
+           "AND r.reactionType = com.example.backendWVideos.enums.VideoReactionType.LIKE GROUP BY r.video.id")
+    List<Object[]> countOwnerLikesByVideo(@Param("userId") String userId);
 }

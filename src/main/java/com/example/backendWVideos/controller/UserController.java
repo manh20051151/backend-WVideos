@@ -18,6 +18,7 @@ import com.example.backendWVideos.service.UserService;
 import com.example.backendWVideos.service.UserFinancialService;
 import jakarta.validation.Valid;
 import io.swagger.v3.oas.annotations.Operation;
+import org.springframework.security.core.context.SecurityContextHolder;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -284,6 +285,13 @@ public class UserController {
 
     @GetMapping("/{userId}/financial-info")
     public ApiResponse<UserFinancialInfoDTO> getUserFinancialInfo(@PathVariable String userId) {
+        // Chỉ cho phép user xem thông tin tài chính của chính mình (chống truy cập dữ liệu người khác)
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        User current = userRepository.findByEmail(email)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+        if (!current.getId().equals(userId)) {
+            throw new AppException(ErrorCode.ACCESS_DENIED);
+        }
         UserFinancialInfoDTO financialInfo = userFinancialService.getUserFinancialInfo(userId);
         return ApiResponse.<UserFinancialInfoDTO>builder()
                 .code(1000)

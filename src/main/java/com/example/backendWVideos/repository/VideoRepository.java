@@ -149,4 +149,18 @@ public interface VideoRepository extends JpaRepository<Video, String> {
     List<Video> findShortsExcludingWatched(@Param("userId") String userId,
                                             @Param("lastCreatedAt") LocalDateTime lastCreatedAt,
                                             Pageable pageable);
+
+    // === Thống kê kênh của người dùng ===
+
+    // Đếm số video theo trạng thái (không tính DELETED)
+    @Query("SELECT v.status, COUNT(v) FROM Video v WHERE v.user.id = :userId AND v.status <> com.example.backendWVideos.enums.VideoStatus.DELETED GROUP BY v.status")
+    List<Object[]> countOwnerVideosByStatus(@Param("userId") String userId);
+
+    // Tổng bình luận + tổng lượt lưu cộng dồn (không tính video đã xóa)
+    @Query("SELECT COALESCE(SUM(v.commentsCount), 0), COALESCE(SUM(v.favoritesCount), 0) " +
+           "FROM Video v WHERE v.user.id = :userId AND v.status <> com.example.backendWVideos.enums.VideoStatus.DELETED")
+    List<Object[]> sumOwnerEngagement(@Param("userId") String userId);
+    // Thời điểm video sớm nhất của kênh - dùng cho xu hướng "toàn bộ thời gian"
+    @Query("SELECT MIN(v.createdAt) FROM Video v WHERE v.user.id = :userId")
+    LocalDateTime oldestOwnerVideoCreatedAt(@Param("userId") String userId);
 }

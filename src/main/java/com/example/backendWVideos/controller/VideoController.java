@@ -44,6 +44,7 @@ public class VideoController {
     private final VideoService videoService;
     private final com.example.backendWVideos.service.StreamtapeService streamtapeService;
     private final UserRepository userRepository;
+    private final com.example.backendWVideos.service.ChannelAnalyticsService channelAnalyticsService;
     
     private RestTemplate getRestTemplate() {
         return new RestTemplate();
@@ -139,6 +140,17 @@ public class VideoController {
         
         return ApiResponse.<Page<VideoResponse>>builder()
                 .result(videos)
+                .build();
+    }
+
+    @Operation(summary = "Channel analytics", description = "Thống kê kênh của chính người dùng: lượt xem, đăng ký, tương tác, top video. trend=7|30|90|all")
+    @GetMapping("/my-channel-analytics")
+    @PreAuthorize("isAuthenticated()")
+    public ApiResponse<com.example.backendWVideos.dto.response.ChannelAnalyticsResponse> getMyChannelAnalytics(
+            @RequestParam(defaultValue = "30") String trend
+    ) {
+        return ApiResponse.<com.example.backendWVideos.dto.response.ChannelAnalyticsResponse>builder()
+                .result(channelAnalyticsService.getMyChannelAnalytics(trend))
                 .build();
     }
     

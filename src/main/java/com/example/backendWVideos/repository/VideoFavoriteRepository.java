@@ -22,4 +22,8 @@ public interface VideoFavoriteRepository extends JpaRepository<VideoFavorite, St
     long countByVideoId(String videoId);
 
     Page<VideoFavorite> findAllByUserIdOrderByCreatedAtDesc(String userId, Pageable pageable);
+
+    // Tổng lượt lưu trên mọi video thuộc kênh userId
+    @Query("SELECT COUNT(f) FROM VideoFavorite f WHERE f.video.user.id = :userId")
+    long countOwnerFavorites(@Param("userId") String userId);
 }
