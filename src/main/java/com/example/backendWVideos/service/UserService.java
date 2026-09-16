@@ -297,16 +297,17 @@ public class UserService {
                 .bankAccountNumber(firstRow[9] != null ? String.valueOf(firstRow[9]) : null)
                 .balance(firstRow[10] != null ? ((Number) firstRow[10]).doubleValue() : 0.0)
                 .revenue(firstRow[11] != null ? ((Number) firstRow[11]).doubleValue() : 0.0)
+                .joinedDate(firstRow[12] != null ? (java.util.Date) firstRow[12] : null)
                 .build();
 
         // Load roles từ các row còn lại
         Set<Role> roles = new HashSet<>();
         for (Object[] row : userRows) {
-            if (row[12] != null) { // role_id
+            if (row[13] != null) { // role_id
                 Role role = Role.builder()
-                        .id(String.valueOf(row[12]))
-                        .name(row[13] != null ? String.valueOf(row[13]) : null)
-                        .description(row[14] != null ? String.valueOf(row[14]) : null)
+                        .id(String.valueOf(row[13]))
+                        .name(row[14] != null ? String.valueOf(row[14]) : null)
+                        .description(row[15] != null ? String.valueOf(row[15]) : null)
                         .build();
                 roles.add(role);
             }

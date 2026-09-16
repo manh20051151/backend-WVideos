@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
@@ -79,7 +80,7 @@ public interface UserRepository extends JpaRepository<User, String> {
     @Query(value = """
         SELECT u.id, u.password, u.number_phone, u.full_name, u.avatar, u.email, 
                u.gender, u.bank_name, u.bank_account_holder_name, u.bank_account_number,
-               u.balance, u.revenue,
+               u.balance, u.revenue, u.joined_date,
                r.id as role_id, r.name as role_name, r.description as role_description
         FROM users u 
         LEFT JOIN user_roles ur ON u.id = ur.user_id 
@@ -114,4 +115,17 @@ public interface UserRepository extends JpaRepository<User, String> {
         WHERE email = :email
         """, nativeQuery = true)
     void updateUserInfo(@Param("email") String email, @Param("fullName") String fullName, @Param("numberPhone") String numberPhone, @Param("gender") Boolean gender, @Param("avatar") String avatar, @Param("bankName") String bankName, @Param("bankAccountHolderName") String bankAccountHolderName, @Param("bankAccountNumber") String bankAccountNumber);
+
+    // Backfill joined_date cho các tài khoản tạo trước khi cột này có dữ liệu:
+    // lấy theo video sớm nhất của user, nếu không có video thì dùng thời điểm hiện tại
+    @Modifying
+    @Transactional
+    @Query(value = """
+        UPDATE users u
+        LEFT JOIN (SELECT user_id, MIN(created_at) AS first_upload FROM videos GROUP BY user_id) v
+            ON v.user_id = u.id
+        SET u.joined_date = COALESCE(v.first_upload, NOW())
+        WHERE u.joined_date IS NULL
+        """, nativeQuery = true)
+    int backfillMissingJoinedDates();
 }

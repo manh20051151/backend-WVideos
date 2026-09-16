@@ -6,6 +6,7 @@ import com.example.backendWVideos.repository.NavItemRepository;
 import com.example.backendWVideos.repository.NotificationRepository;
 import com.example.backendWVideos.repository.RoleRepository;
 import com.example.backendWVideos.repository.SubscriptionRepository;
+import com.example.backendWVideos.repository.UserRepository;
 import com.example.backendWVideos.repository.VideoReactionRepository;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -41,13 +42,6 @@ public class ApplicationInitConfig {
                     { "Tin tức", "/news" },
                     { "Shorts", "/shorts" },
                     { "Kênh Đã Đăng Ký", "/kenh-da-dang-ky" },
-                    { "Clip Sao Tạo Nội Dung", "/clip-sao-tao-noi-dung" },
-                    { "Clip Sao Hát Nhép", "/clip-sao-hat-nhep" },
-                    { "Ảnh Sao", "/anh-sao" },
-                    { "Thể Loại", "/the-loai" },
-                    { "Khác", "/khac" },
-                    { "Đóng Góp", "/dong-gop" },
-                    { "Thông báo", "/thong-bao" },
             };
 
             int order = (int) navItemRepository.count();
@@ -66,6 +60,21 @@ public class ApplicationInitConfig {
                 }
             }
             log.info("Đã đảm bảo {} mục menu điều hướng mặc định tồn tại", defaultNavItems.length);
+        };
+    }
+
+    // Backfill joined_date còn thiếu cho các tài khoản cũ (để trang profile hiển thị "Ngày tham gia")
+    @Bean
+    ApplicationRunner joinedDateBackfill(UserRepository userRepository) {
+        return args -> {
+            try {
+                int updated = userRepository.backfillMissingJoinedDates();
+                if (updated > 0) {
+                    log.info("Đã backfill joined_date cho {} tài khoản cũ", updated);
+                }
+            } catch (Exception e) {
+                log.warn("Không thể backfill joined_date: {}", e.getMessage());
+            }
         };
     }
 
