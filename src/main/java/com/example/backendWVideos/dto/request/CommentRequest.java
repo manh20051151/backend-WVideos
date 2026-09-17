@@ -16,4 +16,7 @@ public class CommentRequest {
     @NotBlank(message = "Nội dung comment không được để trống")
     @Size(max = 500, message = "Nội dung comment không được vượt quá 500 ký tự")
     private String content;
+
+    // Id comment cha nếu đây là phản hồi (trả lời) một bình luận khác
+    private String parentId;
 }

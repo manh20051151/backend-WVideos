@@ -43,4 +43,13 @@ public interface CommentRepository extends JpaRepository<Comment, String> {
         @Param("userEmail") String userEmail,
         Pageable pageable
     );
+
+    // Bảng xếp hạng: comment có điểm (like - dislike) cao nhất hiển thị lên đầu
+    @Query("SELECT c FROM Comment c WHERE c.video.id = :videoId " +
+           "AND c.parent IS NULL AND c.isDeleted = false " +
+           "ORDER BY (COALESCE(c.likeCount, 0) - COALESCE(c.dislikeCount, 0)) DESC, c.createdAt DESC")
+    Page<Comment> findByVideoIdTopLevelRanked(
+        @Param("videoId") String videoId,
+        Pageable pageable
+    );
 }

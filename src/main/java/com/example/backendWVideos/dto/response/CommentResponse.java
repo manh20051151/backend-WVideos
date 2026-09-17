@@ -22,6 +22,7 @@ public class CommentResponse {
     List<CommentResponse> replies;
     LocalDateTime createdAt;
     Boolean isDeleted;
+    Boolean isEdited;  // Bình luận đã được chỉnh sửa
     
     // Moderation fields
     String status;  // PENDING, APPROVED, REJECTED
@@ -30,4 +31,9 @@ public class CommentResponse {
     LocalDateTime moderatedAt;
     String rejectionReason;
     Boolean canView;  // Frontend dùng để quyết định hiện/ẩn content
+
+    // Reactions
+    Long likeCount;
+    Long dislikeCount;
+    String userReaction;  // LIKE, DISLIKE hoặc null (của người xem hiện tại)
 }

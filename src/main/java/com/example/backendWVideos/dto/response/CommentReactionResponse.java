@@ -1,0 +1,15 @@
+package com.example.backendWVideos.dto.response;
+
+import lombok.*;
+import lombok.experimental.FieldDefaults;
+
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+@FieldDefaults(level = AccessLevel.PRIVATE)
+public class CommentReactionResponse {
+    Long likeCount;
+    Long dislikeCount;
+    String userReaction; // LIKE | DISLIKE | null
+}

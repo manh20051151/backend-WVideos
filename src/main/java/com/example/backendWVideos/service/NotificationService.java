@@ -97,6 +97,17 @@ public class NotificationService {
                 videoId, actorId, actorName, thumbnailUrl, avatarUrl);
     }
 
+    public void notifyNewCommentReply(String parentCommentOwnerId, String actorId, String actorName,
+                                      String videoId, String videoTitle, String replySnippet,
+                                      String thumbnailUrl, String avatarUrl) {
+        if (parentCommentOwnerId.equals(actorId)) return;
+        String snippet = replySnippet != null ? replySnippet : "";
+        create(NotificationType.COMMENT, parentCommentOwnerId,
+                "Phản hồi bình luận",
+                actorName + " đã trả lời bình luận của bạn trong video \"" + videoTitle + "\": " + snippet,
+                videoId, actorId, actorName, thumbnailUrl, avatarUrl);
+    }
+
     public void notifyNewSubscriber(String channelOwnerId, String subscriberId, String subscriberName, String avatarUrl) {
         if (channelOwnerId.equals(subscriberId)) return;
         // Tránh spam: bỏ qua nếu subscriber này từng đăng ký kênh trước đó

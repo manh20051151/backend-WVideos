@@ -3,7 +3,9 @@ package com.example.backendWVideos.controller;
 import com.example.backendWVideos.dto.request.ApiResponse;
 import com.example.backendWVideos.dto.request.CommentRequest;
 import com.example.backendWVideos.dto.request.CommentModerationRequest;
+import com.example.backendWVideos.dto.request.CommentReactionRequest;
 import com.example.backendWVideos.dto.response.CommentResponse;
+import com.example.backendWVideos.dto.response.CommentReactionResponse;
 import com.example.backendWVideos.service.CommentService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -42,7 +44,7 @@ public class CommentController {
                 .build();
     }
 
-    @Operation(summary = "Get video comments", description = "Lấy danh sách bình luận của video (filtered by status)")
+    @Operation(summary = "Get video comments", description = "Lấy danh sách bình luận của video (xếp hạng theo like/dislike)")
     @GetMapping("/videos/{videoId}/comments")
     public ApiResponse<Page<CommentResponse>> getVideoComments(
             @PathVariable String videoId,
@@ -56,6 +58,31 @@ public class CommentController {
         
         return ApiResponse.<Page<CommentResponse>>builder()
                 .result(comments)
+                .build();
+    }
+
+    @Operation(summary = "Get comments count", description = "Tổng số bình luận của video (bao gồm cả trả lời, loại bình luận đã xóa)")
+    @GetMapping("/videos/{videoId}/comments/count")
+    public ApiResponse<Long> getCommentsCount(@PathVariable String videoId) {
+        long count = commentService.getVideoCommentsCount(videoId);
+        return ApiResponse.<Long>builder()
+                .result(count)
+                .build();
+    }
+
+    @Operation(summary = "React to comment", description = "Like hoặc dislike bình luận. Gọi lặp lại cùng loại sẽ bỏ phản ứng. Kết ảnh hưởng đến thứ tự hiển thị.")
+    @PostMapping("/comments/{commentId}/reactions")
+    public ApiResponse<CommentReactionResponse> reactToComment(
+            @PathVariable String commentId,
+            @RequestBody @Valid CommentReactionRequest request
+    ) {
+        String userEmail = SecurityContextHolder.getContext().getAuthentication().getName();
+
+        CommentReactionResponse response = commentService.toggleReaction(userEmail, commentId, request.getReactionType());
+
+        return ApiResponse.<CommentReactionResponse>builder()
+                .result(response)
+                .message("Đã cập nhật phản ứng bình luận")
                 .build();
     }
 

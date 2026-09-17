@@ -38,6 +38,7 @@ public class Comment {
     private Comment parent;
     
     @OneToMany(mappedBy = "parent", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("createdAt ASC, id ASC")  // Reply cũ nhất hiển thị ở trên
     @Builder.Default
     private List<Comment> replies = new ArrayList<>();
     
@@ -64,8 +65,21 @@ public class Comment {
     
     @Column(name = "rejection_reason")
     private String rejectionReason;
-    
+
+    @Column(name = "is_edited", nullable = false, columnDefinition = "BOOLEAN DEFAULT 0")
+    @Builder.Default
+    private Boolean isEdited = false;  // Đánh dấu bình luận đã được chỉnh sửa
+
     @Column(name = "is_deleted")
     @Builder.Default
     private Boolean isDeleted = false;
+
+    // Reaction counts (dùng để xếp hạng comment hiển thị lên đầu)
+    @Column(name = "like_count", nullable = false, columnDefinition = "BIGINT DEFAULT 0")
+    @Builder.Default
+    private Long likeCount = 0L;
+
+    @Column(name = "dislike_count", nullable = false, columnDefinition = "BIGINT DEFAULT 0")
+    @Builder.Default
+    private Long dislikeCount = 0L;
 }
