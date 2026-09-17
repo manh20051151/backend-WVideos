@@ -4,6 +4,8 @@ import com.example.backendWVideos.dto.request.ApiResponse;
 import com.example.backendWVideos.dto.response.SepayResponseDTO;
 import com.example.backendWVideos.dto.response.TransactionCheckResultDTO;
 import com.example.backendWVideos.dto.response.UserFinancialInfoDTO;
+import com.example.backendWVideos.exception.AppException;
+import com.example.backendWVideos.exception.ErrorCode;
 import com.example.backendWVideos.service.SepayService;
 import com.example.backendWVideos.service.UserFinancialService;
 import lombok.RequiredArgsConstructor;
@@ -50,7 +52,15 @@ public class SepayController {
         Double amount = Double.valueOf(request.get("amount").toString());
         int limit = request.containsKey("limit") ? 
             Integer.parseInt(request.get("limit").toString()) : 20;
-            
+
+        // Chặn số tiền nạp dưới mức tối thiểu ngay từ tầng API
+        if (amount == null || amount < sepayService.MIN_TOPUP_AMOUNT) {
+            throw new AppException(ErrorCode.INVALID_AMOUNT);
+        }
+        if (description == null || description.isBlank()) {
+            throw new AppException(ErrorCode.INVALID_REQUEST);
+        }
+
         log.info("Checking transaction with description: {}, amount: {}, limit: {}", description, amount, limit);
         
         TransactionCheckResultDTO result = sepayService.checkTransactionByAmountAndDescription(description, amount, limit);

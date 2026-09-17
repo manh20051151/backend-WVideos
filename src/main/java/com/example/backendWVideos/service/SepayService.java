@@ -41,6 +41,9 @@ public class SepayService {
 
     private static final Pattern USER_ID_PATTERN = Pattern.compile(".*NAPTIEN([A-Za-z0-9]{8})([a-fA-F0-9]{32}).*");
 
+    // Số tiền nạp tối thiểu (VND) - áp dụng cho số tiền thực nhận của giao dịch ngân hàng
+    public static final double MIN_TOPUP_AMOUNT = 50000.0;
+
     public SepayService(RestTemplate restTemplate, UserFinancialService userFinancialService,
                        ProcessedTransactionRepository processedTransactionRepository, UserRepository userRepository) {
         this.restTemplate = restTemplate;
@@ -283,7 +286,14 @@ public class SepayService {
         if (amount <= 0) {
             return;
         }
-        
+
+        // Chặn nạp dưới mức tối thiểu - số tiền thực vào tài khoản ngân hàng
+        if (amount < MIN_TOPUP_AMOUNT) {
+            log.warn("⚠️ Giao dịch {} có số tiền thực nhận {} VNĐ dưới mức nạp tối thiểu {} VNĐ - không cập nhật số dư",
+                    transaction.getId(), amount, MIN_TOPUP_AMOUNT);
+            return;
+        }
+
         userFinancialService.updateUserBalance(userId, amount, "ADD");
         
         ProcessedTransaction processedTxn = ProcessedTransaction.builder()
