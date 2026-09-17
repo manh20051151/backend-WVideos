@@ -40,6 +40,7 @@ public class VideoResponse {
     private Set<String> tags;
     private String userId;
     private String userFullName;
+    private String userAvatar;
     private Long subscriberCount;
     private Boolean isSubscribed;
     private LocalDateTime createdAt;

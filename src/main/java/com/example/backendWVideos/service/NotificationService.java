@@ -241,7 +241,6 @@ public class NotificationService {
     private NotificationResponse toResponse(Notification n) {
         // Backfill ảnh cho thông báo cũ chưa có thumbnail/avatar
         String thumbnailUrl = n.getThumbnailUrl();
-        String avatarUrl = n.getAvatarUrl();
 
         if (thumbnailUrl == null && n.getRelatedId() != null
                 && n.getType() != NotificationType.SUBSCRIBE) {
@@ -251,15 +250,11 @@ public class NotificationService {
                     .orElse(null);
         }
 
+        // Luôn lấy avatar hiện tại của người thực hiện từ DB,
+        // tránh hiển thị ảnh cũ (snapshot thời điểm tạo notification)
+        String avatarUrl = currentActorAvatar(n);
         if (avatarUrl == null) {
-            if (n.getActorId() != null) {
-                avatarUrl = userRepository.findById(n.getActorId())
-                        .map(User::getAvatar).orElse(null);
-            } else if (n.getType() == NotificationType.SUBSCRIBE && n.getRelatedId() != null) {
-                // SUBSCRIBE: relatedId chính là subscriberId
-                avatarUrl = userRepository.findById(n.getRelatedId())
-                        .map(User::getAvatar).orElse(null);
-            }
+            avatarUrl = n.getAvatarUrl();
         }
 
         return NotificationResponse.builder()
@@ -275,5 +270,18 @@ public class NotificationService {
                 .thumbnailUrl(thumbnailUrl)
                 .createdAt(n.getCreatedAt())
                 .build();
+    }
+
+    private String currentActorAvatar(Notification n) {
+        if (n.getActorId() != null) {
+            return userRepository.findById(n.getActorId())
+                    .map(User::getAvatar).orElse(null);
+        }
+        if (n.getType() == NotificationType.SUBSCRIBE && n.getRelatedId() != null) {
+            // SUBSCRIBE: relatedId chính là subscriberId
+            return userRepository.findById(n.getRelatedId())
+                    .map(User::getAvatar).orElse(null);
+        }
+        return null;
     }
 }
