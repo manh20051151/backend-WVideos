@@ -85,23 +85,11 @@ public class VideoService {
      * Tạo slug từ tiêu đề video (bỏ dấu tiếng Việt, viết thường, dấu gạch ngang)
      */
     private String generateSlug(String title) {
-        if (title == null || title.isBlank()) {
-            return "video-" + java.util.UUID.randomUUID().toString().substring(0, 8);
+        String slug = com.example.backendWVideos.util.SlugUtils.slugify(title);
+        if (slug.isEmpty()) {
+            slug = "video-" + java.util.UUID.randomUUID().toString().substring(0, 8);
         }
-
-        String normalized = java.text.Normalizer.normalize(title, java.text.Normalizer.Form.NFD)
-                .replaceAll("\\p{M}", "") // Bỏ dấu tiếng Việt
-                .replaceAll("[đĐ]", "d")
-                .toLowerCase()
-                .replaceAll("[^a-z0-9\\s-]", "")
-                .trim()
-                .replaceAll("\\s+", "-")
-                .replaceAll("-+", "-");
-
-        if (normalized.isEmpty()) {
-            normalized = "video-" + java.util.UUID.randomUUID().toString().substring(0, 8);
-        }
-        return normalized;
+        return slug;
     }
 
     /**

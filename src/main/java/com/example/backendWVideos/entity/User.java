@@ -54,6 +54,10 @@ public class User {
     )
     Set<Role> roles;
 
+    // Slug kênh URL-friendly cho link /channel/{slug} (sinh từ họ tên)
+    @Column(name = "slug", unique = true)
+    private String channelSlug;
+
     @Column(nullable = false, columnDefinition = "boolean default false")
     @Builder.Default
     boolean locked = false; // Trạng thái khóa tài khoản

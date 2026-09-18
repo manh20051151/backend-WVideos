@@ -157,19 +157,36 @@ public class CommentController {
                 .build();
     }
 
-    @Operation(summary = "Get all comments", description = "Admin: Lấy tất cả comments")
+    @Operation(summary = "Get all comments", description = "Admin: Lấy tất cả comments (tìm kiếm + lọc theo trạng thái)")
     @GetMapping("/admin/comments")
     @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<Page<CommentResponse>> getAllComments(
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) com.example.backendWVideos.enums.CommentStatus status
     ) {
         Page<CommentResponse> comments = commentService.getAllComments(
-            PageRequest.of(page, size)
+            PageRequest.of(page, size),
+            search,
+            status
         );
         
         return ApiResponse.<Page<CommentResponse>>builder()
                 .result(comments)
+                .build();
+    }
+
+    @Operation(summary = "Delete comment", description = "Admin: Xóa bình luận (kèm toàn bộ reply và reaction)")
+    @DeleteMapping("/admin/comments/{commentId}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<Void> adminDeleteComment(@PathVariable String commentId) {
+        String adminEmail = SecurityContextHolder.getContext().getAuthentication().getName();
+
+        commentService.adminDeleteComment(adminEmail, commentId);
+
+        return ApiResponse.<Void>builder()
+                .message("Đã xóa bình luận")
                 .build();
     }
 

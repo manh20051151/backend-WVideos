@@ -15,6 +15,7 @@ import java.util.Set;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class UserResponse {
     String id;
+    String slug; // Slug kênh cho link /channel/{slug}
     String numberPhone;
     String fullName;
     LocalDate dob;

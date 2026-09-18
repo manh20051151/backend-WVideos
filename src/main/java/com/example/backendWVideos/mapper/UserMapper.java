@@ -17,6 +17,7 @@ public interface UserMapper {
     User toUser (UserCreateRequest request);
     
     @Mapping(target = "purchasedDocumentIds", ignore = true)
+    @Mapping(target = "slug", source = "channelSlug")
     UserResponse toUserResponse(User user);
 
     @Mapping(target = "roles", ignore = true)

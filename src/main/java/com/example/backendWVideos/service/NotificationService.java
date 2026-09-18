@@ -252,13 +252,18 @@ public class NotificationService {
     private NotificationResponse toResponse(Notification n) {
         // Backfill ảnh cho thông báo cũ chưa có thumbnail/avatar
         String thumbnailUrl = n.getThumbnailUrl();
+        String videoSlug = null;
 
-        if (thumbnailUrl == null && n.getRelatedId() != null
-                && n.getType() != NotificationType.SUBSCRIBE) {
+        if (n.getRelatedId() != null && n.getType() != NotificationType.SUBSCRIBE) {
             // relatedId của các loại video là videoId
-            thumbnailUrl = videoRepository.findById(n.getRelatedId())
-                    .map(v -> v.getThumbnailUrl() != null ? v.getThumbnailUrl() : v.getSplashImageUrl())
-                    .orElse(null);
+            java.util.Optional<Video> videoOpt = videoRepository.findById(n.getRelatedId());
+            if (videoOpt.isPresent()) {
+                Video video = videoOpt.get();
+                if (thumbnailUrl == null) {
+                    thumbnailUrl = video.getThumbnailUrl() != null ? video.getThumbnailUrl() : video.getSplashImageUrl();
+                }
+                videoSlug = video.getSlug();
+            }
         }
 
         // Luôn lấy avatar hiện tại của người thực hiện từ DB,
@@ -275,6 +280,7 @@ public class NotificationService {
                 .content(n.getContent())
                 .read(n.isRead())
                 .relatedId(n.getRelatedId())
+                .videoSlug(videoSlug)
                 .actorId(n.getActorId())
                 .actorName(n.getActorName())
                 .avatarUrl(avatarUrl)

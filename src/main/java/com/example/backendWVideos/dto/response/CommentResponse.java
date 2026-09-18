@@ -18,6 +18,8 @@ public class CommentResponse {
     String userFullName;
     String userAvatar;
     String videoId;
+    String videoTitle;  // Tiêu đề video (cho trang admin)
+    String videoSlug;   // Slug video cho link /watch/{slug}
     String parentId;
     List<CommentResponse> replies;
     LocalDateTime createdAt;

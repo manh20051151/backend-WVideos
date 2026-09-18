@@ -51,6 +51,7 @@ public class VideoMapper {
                 .userId(video.getUser() != null ? video.getUser().getId() : null)
                 .userFullName(video.getUser() != null ? video.getUser().getFullName() : null)
                 .userAvatar(video.getUser() != null ? video.getUser().getAvatar() : null)
+                .userSlug(video.getUser() != null ? video.getUser().getChannelSlug() : null)
                 .createdAt(video.getCreatedAt())
                 .updatedAt(video.getUpdatedAt())
                 .uploadedToDoodStreamAt(video.getUploadedToDoodStreamAt())

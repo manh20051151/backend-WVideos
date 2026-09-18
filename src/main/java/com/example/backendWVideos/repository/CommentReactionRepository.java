@@ -14,6 +14,9 @@ import java.util.stream.Collectors;
 @Repository
 public interface CommentReactionRepository extends JpaRepository<CommentReaction, String> {
 
+    // Xóa toàn bộ reaction của một comment (dùng khi admin xóa comment)
+    void deleteByCommentId(String commentId);
+
     Optional<CommentReaction> findByUserIdAndCommentId(String userId, String commentId);
 
     List<CommentReaction> findByUserIdAndCommentIdIn(String userId, Collection<String> commentIds);

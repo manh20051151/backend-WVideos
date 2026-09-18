@@ -39,6 +39,7 @@ public class FinancialHistoryResponse {
         private String direction;     // IN (tăng) | OUT (giảm)
         private LocalDateTime occurredAt;
         private String videoId;       // Gắn với video nếu là giao dịch mua / doanh thu
+        private String videoSlug;     // Slug video cho link /watch/{slug}
     }
 
     @Data

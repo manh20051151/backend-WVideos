@@ -4,6 +4,7 @@ import com.example.backendWVideos.entity.FooterLink;
 import com.example.backendWVideos.entity.FooterSetting;
 import com.example.backendWVideos.entity.NavItem;
 import com.example.backendWVideos.entity.Role;
+import com.example.backendWVideos.entity.User;
 import com.example.backendWVideos.entity.Video;
 import com.example.backendWVideos.enums.FooterSection;
 import com.example.backendWVideos.repository.FooterLinkRepository;
@@ -190,21 +191,45 @@ public class ApplicationInitConfig {
 
     // Chuyển tiêu đề video thành slug (bỏ dấu tiếng Việt, viết thường, dấu gạch ngang)
     private String normalizeTitleToSlug(String title) {
-        if (title == null || title.isBlank()) {
-            return "video-" + java.util.UUID.randomUUID().toString().substring(0, 8);
+        String slug = com.example.backendWVideos.util.SlugUtils.slugify(title);
+        if (slug.isEmpty()) {
+            slug = "video-" + java.util.UUID.randomUUID().toString().substring(0, 8);
         }
-        String normalized = java.text.Normalizer.normalize(title, java.text.Normalizer.Form.NFD)
-                .replaceAll("\\p{M}", "")
-                .replaceAll("[đĐ]", "d")
-                .toLowerCase()
-                .replaceAll("[^a-z0-9\\s-]", "")
-                .trim()
-                .replaceAll("\\s+", "-")
-                .replaceAll("-+", "-");
-        if (normalized.isEmpty()) {
-            normalized = "video-" + java.util.UUID.randomUUID().toString().substring(0, 8);
-        }
-        return normalized;
+        return slug;
+    }
+
+    // Backfill slug kênh còn thiếu cho user cũ (để link /channel/{slug} hoạt động)
+    @Bean
+    ApplicationRunner userChannelSlugBackfill(UserRepository userRepository) {
+        return args -> {
+            try {
+                int updated = 0;
+                for (User user : userRepository.findAllByChannelSlugIsNull()) {
+                    // Ưu tiên sinh từ họ tên, fallback phần trước @ của email
+                    String fallback = (user.getEmail() != null && user.getEmail().contains("@"))
+                            ? user.getEmail().substring(0, user.getEmail().indexOf('@')).replaceAll("[^a-zA-Z0-9-]", "")
+                            : "";
+                    if (fallback.isBlank()) {
+                        fallback = "channel-" + user.getId().substring(0, 8);
+                    }
+                    String baseSlug = com.example.backendWVideos.util.SlugUtils.slugify(user.getFullName(), fallback);
+                    String slug = baseSlug;
+                    int counter = 2;
+                    while (userRepository.existsByChannelSlug(slug)) {
+                        slug = baseSlug + "-" + counter;
+                        counter++;
+                    }
+                    user.setChannelSlug(slug);
+                    userRepository.save(user);
+                    updated++;
+                }
+                if (updated > 0) {
+                    log.info("Đã backfill slug kênh cho {} user cũ", updated);
+                }
+            } catch (Exception e) {
+                log.warn("Không thể backfill slug kênh: {}", e.getMessage());
+            }
+        };
     }
 
     // Dọn dẹp bản ghi reaction trùng lặp (cùng user + video) do dữ liệu cũ

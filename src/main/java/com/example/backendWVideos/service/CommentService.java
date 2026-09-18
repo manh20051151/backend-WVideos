@@ -300,11 +300,91 @@ public class CommentService {
     }
 
     @Transactional(readOnly = true)
-    public Page<CommentResponse> getAllComments(Pageable pageable) {
-        log.info("🔍 Admin lấy tất cả comments");
+    public Page<CommentResponse> getAllComments(Pageable pageable, String search, com.example.backendWVideos.enums.CommentStatus status) {
+        log.info("🔍 Admin lấy tất cả comments (search={}, status={})", search, status);
         String currentUserEmail = getCurrentUserEmail();
-        return commentRepository.findAll(pageable)
-                .map(c -> toCommentResponse(c, currentUserEmail));
+
+        String normalizedSearch = (search != null && !search.isBlank()) ? search.trim() : null;
+        Page<Comment> pageData = commentRepository.findAdminComments(normalizedSearch, status, pageable);
+
+        // Batch load thông tin video (title + slug) để tránh N+1
+        Map<String, Video> videoMap = loadVideosByIds(pageData.getContent().stream()
+                .map(c -> c.getVideo().getId())
+                .collect(java.util.stream.Collectors.toSet()));
+
+        return pageData.map(c -> {
+            CommentResponse response = toCommentResponse(c, currentUserEmail);
+            Video video = videoMap.get(c.getVideo().getId());
+            if (video != null) {
+                response.setVideoTitle(video.getTitle());
+                response.setVideoSlug(video.getSlug());
+            }
+            return response;
+        });
+    }
+
+    /**
+     * Batch load video theo id (title + slug) cho danh sách comment admin
+     */
+    private Map<String, Video> loadVideosByIds(java.util.Set<String> videoIds) {
+        if (videoIds == null || videoIds.isEmpty()) return Map.of();
+        Map<String, Video> map = new java.util.HashMap<>();
+        for (Video v : videoRepository.findAllById(videoIds)) {
+            map.put(v.getId(), v);
+        }
+        return map;
+    }
+
+    /**
+     * Admin xóa comment (cứng): xóa reaction, reply lồng nhau rồi xóa comment
+     */
+    @Transactional
+    public void adminDeleteComment(String adminEmail, String commentId) {
+        log.info("🚀 Admin {} đang xóa comment {}", adminEmail, commentId);
+
+        // Validate admin
+        userRepository.findByEmail(adminEmail)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+
+        // Validate comment
+        Comment comment = commentRepository.findById(commentId)
+                .orElseThrow(() -> new AppException(ErrorCode.COMMENT_NOT_FOUND));
+
+        deleteCommentTree(comment);
+
+        commentRepository.delete(comment);
+        log.info("✅ Admin {} đã xóa comment {}", adminEmail, commentId);
+    }
+
+    /**
+     * Xóa đệ quy reply lồng nhau kèm reaction của từng comment
+     */
+    private void deleteCommentTree(Comment comment) {
+        // Gom tất cả reply con (đệ quy qua nhiều cấp)
+        List<Comment> descendants = new ArrayList<>();
+        collectDescendants(comment, descendants);
+
+        // Xóa reaction của comment cha và toàn bộ reply
+        commentReactionRepository.deleteByCommentId(comment.getId());
+        for (Comment reply : descendants) {
+            commentReactionRepository.deleteByCommentId(reply.getId());
+        }
+
+        // Xóa các reply con (cấp thấp nhất trước)
+        for (int i = descendants.size() - 1; i >= 0; i--) {
+            commentRepository.delete(descendants.get(i));
+        }
+    }
+
+    /**
+     * Gom toàn bộ reply con (nhiều cấp) của một comment
+     */
+    private void collectDescendants(Comment parent, List<Comment> result) {
+        List<Comment> replies = commentRepository.findByParentIdAndIsDeletedFalseOrderByCreatedAtAsc(parent.getId());
+        for (Comment reply : replies) {
+            result.add(reply);
+            collectDescendants(reply, result);
+        }
     }
 
     public long getPendingCommentsCount() {

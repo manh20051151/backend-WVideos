@@ -52,4 +52,19 @@ public interface CommentRepository extends JpaRepository<Comment, String> {
         @Param("videoId") String videoId,
         Pageable pageable
     );
+
+    // Admin: tìm kiếm + lọc theo trạng thái (nội dung, tên người dùng)
+    @Query("SELECT c FROM Comment c WHERE c.isDeleted = false " +
+           "AND (:status IS NULL OR c.status = :status) " +
+           "AND (:search IS NULL OR LOWER(c.content) LIKE LOWER(CONCAT('%', :search, '%')) " +
+           "OR LOWER(c.user.fullName) LIKE LOWER(CONCAT('%', :search, '%'))) " +
+           "ORDER BY c.createdAt DESC")
+    Page<Comment> findAdminComments(
+        @Param("search") String search,
+        @Param("status") com.example.backendWVideos.enums.CommentStatus status,
+        Pageable pageable
+    );
+
+    // Xóa toàn bộ reply của một comment (dùng khi admin xóa comment cha)
+    void deleteByParentId(String parentId);
 }

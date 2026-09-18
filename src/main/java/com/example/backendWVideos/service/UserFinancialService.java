@@ -95,6 +95,7 @@ public class UserFinancialService {
             videoIdsToLoad.add(p.getVideoId());
         }
         Map<String, String> videoTitles = loadVideoTitles(videoIdsToLoad);
+        Map<String, String> videoSlugs = loadVideoSlugs(videoIdsToLoad);
 
         for (VideoPurchase p : myPurchases) {
             double amount = p.getPrice() != null ? p.getPrice().doubleValue() : 0.0;
@@ -109,6 +110,7 @@ public class UserFinancialService {
                     .direction("OUT")
                     .occurredAt(p.getPurchasedAt())
                     .videoId(p.getVideoId())
+                    .videoSlug(videoSlugs.get(p.getVideoId()))
                     .build());
         }
 
@@ -129,6 +131,7 @@ public class UserFinancialService {
                     .direction("IN")
                     .occurredAt(p.getPurchasedAt())
                     .videoId(p.getVideoId())
+                    .videoSlug(videoSlugs.get(p.getVideoId()))
                     .build());
         }
 
@@ -163,6 +166,15 @@ public class UserFinancialService {
             titles.put(v.getId(), v.getTitle());
         }
         return titles;
+    }
+
+    private Map<String, String> loadVideoSlugs(Set<String> videoIds) {
+        if (videoIds.isEmpty()) return Map.of();
+        Map<String, String> slugs = new HashMap<>();
+        for (Video v : videoRepository.findAllById(videoIds)) {
+            slugs.put(v.getId(), v.getSlug());
+        }
+        return slugs;
     }
 
     private List<FinancialHistoryResponse.MonthlyStat> buildMonthlyStats(

@@ -18,6 +18,15 @@ public interface UserRepository extends JpaRepository<User, String> {
     Optional<User> findByEmail(String email);
     boolean existsByEmail(String email);
 
+    // Tìm theo slug kênh (URL-friendly)
+    Optional<User> findByChannelSlug(String channelSlug);
+
+    // Kiểm tra slug kênh đã tồn tại
+    boolean existsByChannelSlug(String channelSlug);
+
+    // Lấy các user chưa có slug kênh (để backfill)
+    List<User> findAllByChannelSlugIsNull();
+
     @Query("SELECT u FROM User u WHERE LOWER(u.fullName) LIKE LOWER(CONCAT('%', :kw, '%')) " +
             "OR LOWER(u.email) LIKE LOWER(CONCAT('%', :kw, '%'))")
     org.springframework.data.domain.Page<User> searchByKeyword(@Param("kw") String kw, org.springframework.data.domain.Pageable pageable);

@@ -70,6 +70,16 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
                 user.setEmail(email);
                 user.setFullName(name);
                 user.setAvatar(oAuth2User.getAttribute("picture"));
+                // Sinh slug kênh duy nhất từ tên
+                String baseSlug = com.example.backendWVideos.util.SlugUtils.slugify(name,
+                        email != null && email.contains("@") ? email.substring(0, email.indexOf('@')) : "channel");
+                String slug = baseSlug;
+                int counter = 2;
+                while (userRepository.existsByChannelSlug(slug)) {
+                    slug = baseSlug + "-" + counter;
+                    counter++;
+                }
+                user.setChannelSlug(slug);
 
                 // Thêm role GUEST cho user mới
                 Role roleGuest = roleRepository.findByName("GUEST")

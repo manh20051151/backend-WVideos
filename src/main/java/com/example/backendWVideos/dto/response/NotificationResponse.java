@@ -19,6 +19,7 @@ public class NotificationResponse {
     String content;
     boolean read;
     String relatedId;     // videoId / channelId / commentId
+    String videoSlug;     // Slug video cho link /watch/{slug} (chỉ với loại video)
     String actorId;       // người thực hiện hành động (nếu có)
     String actorName;
     String avatarUrl;     // ảnh đại diện người thực hiện

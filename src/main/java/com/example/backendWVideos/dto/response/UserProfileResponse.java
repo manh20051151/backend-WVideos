@@ -12,6 +12,7 @@ import java.util.List;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class UserProfileResponse {
     String id;
+    String slug; // Slug kênh cho link /channel/{slug}
     String email;
     String fullName;
     String avatar;

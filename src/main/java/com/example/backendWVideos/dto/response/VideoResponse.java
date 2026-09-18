@@ -42,6 +42,7 @@ public class VideoResponse {
     private String userId;
     private String userFullName;
     private String userAvatar;
+    private String userSlug; // Slug kênh cho link /channel/{slug}
     private Long subscriberCount;
     private Boolean isSubscribed;
     private LocalDateTime createdAt;

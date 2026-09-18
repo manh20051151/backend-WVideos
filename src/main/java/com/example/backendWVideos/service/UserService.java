@@ -495,6 +495,7 @@ public class UserService {
                     .authProvider(registration.getAuthProvider())
                     .numberPhone(registration.getNumberPhone())
                     .fullName(registration.getFullName())
+                    .channelSlug(generateUniqueChannelSlug(registration.getFullName(), registration.getEmail()))
                     .avatar(DEFAULT_AVATAR_URL)
                     .build();
 
@@ -607,37 +608,69 @@ public class UserService {
     }
     
     /**
+     * Sinh slug kênh duy nhất từ họ tên (thêm hậu tố -2, -3... nếu trùng)
+     */
+    private String generateUniqueChannelSlug(String fullName, String email) {
+        // Fallback: dùng phần trước @ của email nếu không sinh được slug từ tên
+        String fallback = (email != null && email.contains("@"))
+                ? email.substring(0, email.indexOf('@')).replaceAll("[^a-zA-Z0-9-]", "")
+                : "channel";
+        if (fallback == null || fallback.isBlank()) {
+            fallback = "channel";
+        }
+
+        String baseSlug = com.example.backendWVideos.util.SlugUtils.slugify(fullName, fallback);
+        String slug = baseSlug;
+        int counter = 2;
+        while (userRepository.existsByChannelSlug(slug)) {
+            slug = baseSlug + "-" + counter;
+            counter++;
+        }
+        return slug;
+    }
+
+    /**
+     * Tìm user theo ID hoặc slug kênh (hỗ trợ link /channel/{slug} và /channel/{id})
+     */
+    private User findUserByIdOrChannelSlug(String idOrSlug) {
+        return userRepository.findById(idOrSlug)
+                .or(() -> userRepository.findByChannelSlug(idOrSlug))
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+    }
+
+    /**
      * Lấy thông tin profile của user (dùng cho trang channel)
      */
     @Transactional(readOnly = true)
     public UserProfileResponse getUserProfile(String userId) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
-        
+        User user = findUserByIdOrChannelSlug(userId);
+        // Dùng id thật của user cho các query (URL có thể truyền id hoặc slug)
+        String channelId = user.getId();
+
         // Đếm số video
-        long videoCount = videoRepository.countByUserIdAndStatusNot(userId, VideoStatus.DELETED);
-        
+        long videoCount = videoRepository.countByUserIdAndStatusNot(channelId, VideoStatus.DELETED);
+
         // Tính tổng lượt xem
-        Long totalViews = videoRepository.getTotalViewsByUserId(userId, VideoStatus.DELETED);
+        Long totalViews = videoRepository.getTotalViewsByUserId(channelId, VideoStatus.DELETED);
         if (totalViews == null) totalViews = 0L;
-        
+
         // Đếm số người đăng ký
-        long subscriberCount = subscriptionRepository.countByChannelId(userId);
-        
+        long subscriberCount = subscriptionRepository.countByChannelId(channelId);
+
         // Lấy danh sách video (public only, không bị xóa)
-        Page<Video> videos = videoRepository.findByUserIdAndStatusAndIsPublicTrue(userId, VideoStatus.READY, PageRequest.of(0, 20));
+        Page<Video> videos = videoRepository.findByUserIdAndStatusAndIsPublicTrue(channelId, VideoStatus.READY, PageRequest.of(0, 20));
         List<VideoResponse> videoResponses = videos.getContent().stream()
                 .map(videoMapper::toVideoResponse)
                 .toList();
-        
+
         // Kiểm tra user hiện tại đã đăng ký chưa
         Boolean isSubscribed = null;
         try {
             var context = SecurityContextHolder.getContext();
             String email = context.getAuthentication().getName();
             User currentUser = userRepository.findByEmail(email).orElse(null);
-            if (currentUser != null && !currentUser.getId().equals(userId)) {
-                isSubscribed = subscriptionRepository.existsBySubscriberIdAndChannelId(currentUser.getId(), userId);
+            if (currentUser != null && !currentUser.getId().equals(channelId)) {
+                isSubscribed = subscriptionRepository.existsBySubscriberIdAndChannelId(currentUser.getId(), channelId);
             }
         } catch (Exception e) {
             // User chưa đăng nhập
@@ -645,6 +678,7 @@ public class UserService {
         
         return UserProfileResponse.builder()
                 .id(user.getId())
+                .slug(user.getChannelSlug())
                 .email(user.getEmail())
                 .fullName(user.getFullName())
                 .avatar(user.getAvatar())
@@ -662,12 +696,11 @@ public class UserService {
      */
     @Transactional(readOnly = true)
     public Page<VideoResponse> getChannelVideos(String userId, int page, int size) {
-        userRepository.findById(userId)
-                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+        User user = findUserByIdOrChannelSlug(userId); // URL có thể truyền id hoặc slug
         int limit = Math.min(Math.max(size, 1), 50);
         Pageable pageable = PageRequest.of(Math.max(page, 0), limit,
                 org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "createdAt"));
-        Page<Video> videos = videoRepository.findByUserIdAndStatus(userId, VideoStatus.READY, pageable);
+        Page<Video> videos = videoRepository.findByUserIdAndStatus(user.getId(), VideoStatus.READY, pageable);
         return videos.map(videoMapper::toVideoResponse);
     }
 }
