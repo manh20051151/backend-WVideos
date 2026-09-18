@@ -53,7 +53,11 @@ public class SecurityConfig {
         "/videos/*/related",  // Related videos
         "/categories",     // Public categories
         "/nav-items",       // Public navigation menu
-        "/nav-items/**"     // Public navigation menu detail
+        "/nav-items/**",    // Public navigation menu detail
+        "/footer",          // Public footer info
+        "/footer/links",    // Public footer links
+        "/footer/links/**", // Public footer link detail
+        "/footer/settings"  // Public footer settings
     };
 
     private final String[] PUBLIC_ENDPOINTS_POST = {

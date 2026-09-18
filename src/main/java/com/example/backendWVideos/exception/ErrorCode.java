@@ -118,6 +118,12 @@ public enum ErrorCode {
     NAV_ITEM_NOT_FOUND(10001, "Không tìm thấy mục menu", HttpStatus.NOT_FOUND),
     NAV_ITEM_LABEL_EXISTED(10002, "Tên hiển thị mục menu đã tồn tại", HttpStatus.BAD_REQUEST),
     NAV_ITEM_SLUG_EXISTED(10003, "Slug mục menu đã tồn tại", HttpStatus.BAD_REQUEST),
+
+    // Footer errors (thông tin footer)
+    FOOTER_LINK_NOT_FOUND(10101, "Không tìm thấy liên kết footer", HttpStatus.NOT_FOUND),
+    FOOTER_LINK_EXISTED(10102, "Liên kết này đã tồn tại trong khu vực này của footer", HttpStatus.BAD_REQUEST),
+    FOOTER_SETTING_NOT_FOUND(10103, "Không tìm thấy cấu hình footer", HttpStatus.NOT_FOUND),
+    FOOTER_SETTING_KEY_EXISTED(10104, "Khóa cấu hình footer đã tồn tại", HttpStatus.BAD_REQUEST),
     ;
 
     ErrorCode(int code, String message, HttpStatusCode statusCode) {

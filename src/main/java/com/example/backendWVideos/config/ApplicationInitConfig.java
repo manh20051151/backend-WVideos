@@ -1,7 +1,12 @@
 package com.example.backendWVideos.config;
 
+import com.example.backendWVideos.entity.FooterLink;
+import com.example.backendWVideos.entity.FooterSetting;
 import com.example.backendWVideos.entity.NavItem;
 import com.example.backendWVideos.entity.Role;
+import com.example.backendWVideos.enums.FooterSection;
+import com.example.backendWVideos.repository.FooterLinkRepository;
+import com.example.backendWVideos.repository.FooterSettingRepository;
 import com.example.backendWVideos.repository.NavItemRepository;
 import com.example.backendWVideos.repository.NotificationRepository;
 import com.example.backendWVideos.repository.RoleRepository;
@@ -60,6 +65,82 @@ public class ApplicationInitConfig {
                 }
             }
             log.info("Đã đảm bảo {} mục menu điều hướng mặc định tồn tại", defaultNavItems.length);
+        };
+    }
+
+    // Đảm bảo dữ liệu footer mặc định luôn tồn tại (links + settings, upsert theo label/key)
+    @Bean
+    ApplicationRunner defaultFooterData(FooterLinkRepository footerLinkRepository,
+                                        FooterSettingRepository footerSettingRepository) {
+        return args -> {
+            // Cấu hình footer mặc định
+            String[][] defaultFooterSettings = {
+                    { "brand_description", "Nền tảng chia sẻ video hàng đầu Việt Nam. Khám phá hàng triệu nội dung sáng tạo mỗi ngày." },
+                    { "copyright_text", "WVideos. All rights reserved." },
+            };
+
+            int settingCount = 0;
+            for (String[] item : defaultFooterSettings) {
+                if (footerSettingRepository.findBySettingKey(item[0]).isEmpty()) {
+                    footerSettingRepository.save(FooterSetting.builder()
+                            .settingKey(item[0])
+                            .settingValue(item[1])
+                            .isActive(true)
+                            .createdByName("Hệ thống")
+                            .build());
+                    settingCount++;
+                }
+            }
+
+            // Link footer mặc định theo từng khu vực (label, href, section)
+            Object[][] defaultFooterLinks = {
+                    { "Trang chủ", "/", FooterSection.QUICK_LINKS },
+                    { "Shorts", "/shorts", FooterSection.QUICK_LINKS },
+                    { "Tin tức", "/news", FooterSection.QUICK_LINKS },
+                    { "Thể loại", "/the-loai", FooterSection.QUICK_LINKS },
+                    { "Kênh đã đăng ký", "/kenh-da-dang-ky", FooterSection.QUICK_LINKS },
+                    { "Tin tức", "/news", FooterSection.CATEGORIES },
+                    { "Shorts", "/shorts", FooterSection.CATEGORIES },
+                    { "Clip Sao", "/clip-sao-tao-noi-dung", FooterSection.CATEGORIES },
+                    { "Ảnh Sao", "/anh-sao", FooterSection.CATEGORIES },
+                    { "Âm nhạc", "#", FooterSection.CATEGORIES },
+                    { "Về chúng tôi", "#", FooterSection.SUPPORT },
+                    { "Điều khoản sử dụng", "#", FooterSection.SUPPORT },
+                    { "Chính sách bảo mật", "#", FooterSection.SUPPORT },
+                    { "Trợ giúp", "#", FooterSection.SUPPORT },
+                    { "Liên hệ", "#", FooterSection.SUPPORT },
+                    { "Facebook", "#", FooterSection.SOCIAL },
+                    { "YouTube", "#", FooterSection.SOCIAL },
+                    { "TikTok", "#", FooterSection.SOCIAL },
+                    { "Instagram", "#", FooterSection.SOCIAL },
+                    { "Điều khoản", "#", FooterSection.BOTTOM },
+                    { "Bảo mật", "#", FooterSection.BOTTOM },
+                    { "Cookie", "#", FooterSection.BOTTOM },
+            };
+
+            int linkCount = 0;
+            int order = 0;
+            for (Object[] item : defaultFooterLinks) {
+                String label = (String) item[0];
+                String href = (String) item[1];
+                FooterSection section = (FooterSection) item[2];
+                if (!footerLinkRepository.existsByLabelAndSection(label, section)) {
+                    footerLinkRepository.save(FooterLink.builder()
+                            .label(label)
+                            .href(href)
+                            .section(section)
+                            .isActive(true)
+                            .openNewTab(false)
+                            .sortOrder(order++)
+                            .createdByName("Hệ thống")
+                            .build());
+                    linkCount++;
+                }
+            }
+
+            if (settingCount > 0 || linkCount > 0) {
+                log.info("Đã seed dữ liệu footer mặc định: {} cấu hình, {} link", settingCount, linkCount);
+            }
         };
     }
 
