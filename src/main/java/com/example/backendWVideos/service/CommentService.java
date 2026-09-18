@@ -49,6 +49,22 @@ public class CommentService {
         // Validate user
         User user = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+
+        // Kiểm tra user có bị khóa bình luận không
+        if (user.getCommentBannedUntil() != null) {
+            if (user.getCommentBannedUntil().isAfter(java.time.LocalDateTime.now())) {
+                java.time.format.DateTimeFormatter formatter = java.time.format.DateTimeFormatter.ofPattern("HH:mm dd/MM/yyyy");
+                String bannedUntil = user.getCommentBannedUntil().format(formatter);
+                String reason = user.getCommentBanReason() != null ? user.getCommentBanReason() : "";
+                throw new AppException(ErrorCode.COMMENT_BANNED,
+                        "Bạn đã bị khóa bình luận đến " + bannedUntil
+                        + (reason.isBlank() ? "" : " (Lý do: " + reason + ")"));
+            }
+            // Hết hạn -> tự động mở khóa
+            user.setCommentBannedUntil(null);
+            user.setCommentBanReason(null);
+            userRepository.save(user);
+        }
         
         // Validate video
         Video video = videoRepository.findById(videoId)
@@ -470,6 +486,8 @@ public class CommentService {
                 .userId(comment.getUser().getId())
                 .userFullName(comment.getUser().getFullName())
                 .userAvatar(comment.getUser().getAvatar())
+                .commentBannedUntil(comment.getUser().getCommentBannedUntil())
+                .commentBanReason(comment.getUser().getCommentBanReason())
                 .videoId(comment.getVideo().getId())
                 .parentId(comment.getParent() != null ? comment.getParent().getId() : null)
                 .createdAt(comment.getCreatedAt())

@@ -42,7 +42,9 @@ public class NotificationService {
 
     /**
      * Tạo và lưu notification, đồng thời push realtime qua WebSocket tới người nhận.
+     * Dùng REQUIRES_NEW để lỗi lưu notification không làm rollback nghiệp vụ chính (VD: khóa bình luận).
      */
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
     public NotificationResponse create(
             NotificationType type,
             String recipientId,

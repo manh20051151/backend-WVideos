@@ -44,4 +44,8 @@ public class UserResponse {
     // Số dư và doanh thu (VND)
     Double balance;
     Double revenue;
+
+    // Khóa bình luận (admin)
+    java.time.LocalDateTime commentBannedUntil; // Thời điểm hết hạn khóa bình luận
+    String commentBanReason;                    // Lý do khóa bình luận
 }

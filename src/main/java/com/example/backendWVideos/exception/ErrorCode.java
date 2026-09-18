@@ -22,6 +22,7 @@ public enum ErrorCode {
 
 
     USER_NOT_FOUND(2002, "Người dùng không tồn tại", HttpStatus.NOT_FOUND),
+    COMMENT_BANNED(2003, "Bạn đã bị khóa bình luận", HttpStatus.FORBIDDEN),
 
     //NOTIFICATION
     NOTIFICATION_NOT_FOUND(4002, "Lỗi không tìm thấy thông báo", HttpStatus.NOT_FOUND),

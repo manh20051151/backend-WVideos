@@ -192,6 +192,39 @@ public class UserController {
                 .build();
     }
 
+    @PostMapping("/{userId}/comment-ban")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<com.example.backendWVideos.dto.response.UserResponse> banUserCommenting(
+            @PathVariable String userId,
+            @RequestBody @Valid com.example.backendWVideos.dto.request.CommentBanRequest request) {
+
+        String adminEmail = SecurityContextHolder.getContext().getAuthentication().getName();
+        com.example.backendWVideos.dto.response.UserResponse response =
+                userService.banUserCommenting(adminEmail, userId, request);
+
+        return ApiResponse.<com.example.backendWVideos.dto.response.UserResponse>builder()
+                .code(1000)
+                .result(response)
+                .message("Đã khóa bình luận của người dùng trong " + request.getHours() + " giờ")
+                .build();
+    }
+
+    @DeleteMapping("/{userId}/comment-ban")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<com.example.backendWVideos.dto.response.UserResponse> removeCommentBan(
+            @PathVariable String userId) {
+
+        String adminEmail = SecurityContextHolder.getContext().getAuthentication().getName();
+        com.example.backendWVideos.dto.response.UserResponse response =
+                userService.removeCommentBan(adminEmail, userId);
+
+        return ApiResponse.<com.example.backendWVideos.dto.response.UserResponse>builder()
+                .code(1000)
+                .result(response)
+                .message("Đã mở khóa bình luận cho người dùng")
+                .build();
+    }
+
     @GetMapping("/locked")
 //    @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<Page<UserResponse>> getLockedUsers(

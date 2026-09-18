@@ -78,6 +78,7 @@ public class UserService {
     final VideoRepository videoRepository;
     final VideoMapper videoMapper;
     final SubscriptionRepository subscriptionRepository;
+    final NotificationService notificationService;
 
     @Value("${app.registration.token.expiration-minutes:30}")
     int expirationMinutes;
@@ -168,6 +169,83 @@ public class UserService {
 
     public void deleteUser(String userId){
         userRepository.deleteById(userId);
+    }
+
+    /**
+     * Admin khóa quyền bình luận của user trong một khoảng thời gian (giờ)
+     */
+    @Transactional
+    public UserResponse banUserCommenting(String adminEmail, String userId, com.example.backendWVideos.dto.request.CommentBanRequest request) {
+        log.info("🚀 Admin {} đang khóa bình luận của user {} trong {} giờ", adminEmail, userId, request.getHours());
+
+        User admin = userRepository.findByEmail(adminEmail)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+
+        java.time.LocalDateTime bannedUntil = java.time.LocalDateTime.now().plusHours(request.getHours());
+        user.setCommentBannedUntil(bannedUntil);
+        user.setCommentBanReason(request.getReason());
+        User savedUser = userRepository.save(user);
+
+        // Gửi thông báo realtime tới người dùng bị khóa
+        java.time.format.DateTimeFormatter formatter = java.time.format.DateTimeFormatter.ofPattern("HH:mm dd/MM/yyyy");
+        try {
+            notificationService.create(
+                    com.example.backendWVideos.enums.NotificationType.COMMENT_BANNED,
+                    savedUser.getId(),
+                    "Khóa quyền bình luận",
+                    "Bình luận của bạn đã bị khóa đến " + bannedUntil.format(formatter)
+                            + ". Lý do: " + request.getReason(),
+                    null,
+                    admin.getId(),
+                    admin.getFullName() != null ? admin.getFullName() : admin.getEmail(),
+                    null,
+                    admin.getAvatar());
+        } catch (Exception e) {
+            log.warn("Không gửi được thông báo khóa bình luận cho user {}: {}", savedUser.getId(), e.getMessage());
+        }
+
+        log.info("✅ Đã khóa bình luận user {} đến {}", savedUser.getEmail(), savedUser.getCommentBannedUntil());
+        return userMapper.toUserResponse(savedUser);
+    }
+
+    /**
+     * Admin mở khóa bình luận cho user
+     */
+    @Transactional
+    public UserResponse removeCommentBan(String adminEmail, String userId) {
+        log.info("🚀 Admin {} đang mở khóa bình luận cho user {}", adminEmail, userId);
+
+        User admin = userRepository.findByEmail(adminEmail)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+
+        user.setCommentBannedUntil(null);
+        user.setCommentBanReason(null);
+        User savedUser = userRepository.save(user);
+
+        // Gửi thông báo mở khóa tới người dùng
+        try {
+            notificationService.create(
+                    com.example.backendWVideos.enums.NotificationType.COMMENT_BANNED,
+                    savedUser.getId(),
+                    "Đã mở khóa bình luận",
+                    "Bạn đã được mở khóa quyền bình luận. Bình luận của bạn hoạt động bình thường.",
+                    null,
+                    admin.getId(),
+                    admin.getFullName() != null ? admin.getFullName() : admin.getEmail(),
+                    null,
+                    admin.getAvatar());
+        } catch (Exception e) {
+            log.warn("Không gửi được thông báo mở khóa bình luận cho user {}: {}", savedUser.getId(), e.getMessage());
+        }
+
+        log.info("✅ Đã mở khóa bình luận cho user {}", savedUser.getEmail());
+        return userMapper.toUserResponse(savedUser);
     }
 
     /**

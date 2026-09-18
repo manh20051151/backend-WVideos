@@ -58,6 +58,14 @@ public class User {
     @Column(name = "slug", unique = true)
     private String channelSlug;
 
+    // Khóa bình luận (admin) - thời điểm hết hạn khóa
+    @Column(name = "comment_banned_until")
+    private java.time.LocalDateTime commentBannedUntil;
+
+    // Lý do khóa bình luận
+    @Column(name = "comment_ban_reason", length = 255)
+    private String commentBanReason;
+
     @Column(nullable = false, columnDefinition = "boolean default false")
     @Builder.Default
     boolean locked = false; // Trạng thái khóa tài khoản

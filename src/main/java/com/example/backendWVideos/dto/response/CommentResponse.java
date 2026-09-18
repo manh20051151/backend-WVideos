@@ -17,6 +17,8 @@ public class CommentResponse {
     String userId;
     String userFullName;
     String userAvatar;
+    java.time.LocalDateTime commentBannedUntil; // Khóa bình luận của tác giả (admin xem)
+    String commentBanReason;                    // Lý do khóa bình luận
     String videoId;
     String videoTitle;  // Tiêu đề video (cho trang admin)
     String videoSlug;   // Slug video cho link /watch/{slug}
