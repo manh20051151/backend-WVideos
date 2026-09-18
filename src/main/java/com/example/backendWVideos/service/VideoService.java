@@ -996,6 +996,7 @@ public class VideoService {
                 purchased = videoPurchaseRepository.existsByUserIdAndVideoId(userId, video.getId());
             }
         }
+        boolean hasUser = userId != null && !userId.isBlank();
         return ShortsResponse.builder()
                 .id(video.getId())
                 .title(video.getTitle())
@@ -1007,6 +1008,10 @@ public class VideoService {
                 .avatarUrl(video.getUser() != null ? video.getUser().getAvatar() : null)
                 .duration(video.getDuration())
                 .views(video.getViews())
+                .likeCount(videoReactionRepository.countByVideoIdAndReactionType(
+                        video.getId(), com.example.backendWVideos.enums.VideoReactionType.LIKE))
+                .isLiked(hasUser && videoReactionRepository.existsByUserIdAndVideoIdAndReactionType(
+                        userId, video.getId(), com.example.backendWVideos.enums.VideoReactionType.LIKE))
                 .price(video.getPrice())
                 .isPaid(paid)
                 .purchased(purchased)

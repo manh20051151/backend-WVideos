@@ -26,6 +26,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -166,21 +167,34 @@ public class CommentService {
     }
 
     /**
-     * Lấy phản ứng của người dùng hiện tại cho một trang comment (batch, tránh N+1)
+     * Lấy phản ứng của người dùng hiện tại cho một trang comment (batch, tránh N+1).
+     * Bao gồm cả id của reply lồng nhau để reply cũng highlight đúng trạng thái reaction.
+     * Admin cũng được tính (họ cũng có reaction của riêng mình).
      */
     private Map<String, CommentReactionType> getReactionMapForPage(List<Comment> comments) {
-        if (isAdmin()) {
-            return Map.of(); // admin không cần highlight reaction của mình
-        }
         String email = getCurrentUserEmail();
         if (email == null || email.isBlank()) {
             return Map.of();
         }
+        List<String> allIds = new ArrayList<>();
+        for (Comment comment : comments) {
+            collectReactionTargetIds(comment, allIds);
+        }
+        if (allIds.isEmpty()) {
+            return Map.of();
+        }
         return userRepository.findByEmail(email)
-                .map(u -> commentReactionRepository.getReactionsFor(
-                        u.getId(),
-                        comments.stream().map(Comment::getId).collect(Collectors.toList())))
+                .map(u -> commentReactionRepository.getReactionsFor(u.getId(), allIds))
                 .orElse(Map.of());
+    }
+
+    private void collectReactionTargetIds(Comment comment, List<String> ids) {
+        ids.add(comment.getId());
+        if (comment.getReplies() != null) {
+            for (Comment reply : comment.getReplies()) {
+                collectReactionTargetIds(reply, ids);
+            }
+        }
     }
 
     /**
@@ -225,10 +239,13 @@ public class CommentService {
 
         log.info("✅ Reaction cập nhật: comment {}, like {}, dislike {}", commentId, likeCount, dislikeCount);
 
+        // userReaction: null khi user vừa bỏ phản ứng (toggle tắt), ngược lại là loại đang active
+        String userReaction = existing != null && existing.getReactionType() == type ? null : type.name();
+
         return CommentReactionResponse.builder()
                 .likeCount(likeCount)
                 .dislikeCount(dislikeCount)
-                .userReaction(type.name())
+                .userReaction(userReaction)
                 .build();
     }
 
@@ -403,7 +420,7 @@ public class CommentService {
         // Replies (recursive)
         List<CommentResponse> replies = comment.getReplies().stream()
                 .filter(r -> !r.getIsDeleted())
-                .map(r -> toCommentResponse(r, currentUserEmail))
+                .map(r -> toCommentResponse(r, currentUserEmail, reactionMap))
                 .collect(Collectors.toList());
         builder.replies(replies);
         
