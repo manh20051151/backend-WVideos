@@ -29,6 +29,10 @@ public class Video {
     @Column(nullable = false)
     private String title;
     
+    // Slug URL-friendly cho link xem video (VD: "video-dau-tien-cua-toi")
+    @Column(name = "slug", unique = true)
+    private String slug;
+    
     @Column(columnDefinition = "TEXT")
     private String description;
     

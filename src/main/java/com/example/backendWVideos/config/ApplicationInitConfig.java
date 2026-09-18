@@ -4,6 +4,7 @@ import com.example.backendWVideos.entity.FooterLink;
 import com.example.backendWVideos.entity.FooterSetting;
 import com.example.backendWVideos.entity.NavItem;
 import com.example.backendWVideos.entity.Role;
+import com.example.backendWVideos.entity.Video;
 import com.example.backendWVideos.enums.FooterSection;
 import com.example.backendWVideos.repository.FooterLinkRepository;
 import com.example.backendWVideos.repository.FooterSettingRepository;
@@ -13,6 +14,7 @@ import com.example.backendWVideos.repository.RoleRepository;
 import com.example.backendWVideos.repository.SubscriptionRepository;
 import com.example.backendWVideos.repository.UserRepository;
 import com.example.backendWVideos.repository.VideoReactionRepository;
+import com.example.backendWVideos.repository.VideoRepository;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -157,6 +159,52 @@ public class ApplicationInitConfig {
                 log.warn("Không thể backfill joined_date: {}", e.getMessage());
             }
         };
+    }
+
+    // Backfill slug còn thiếu cho các video cũ (để link /watch/{slug} hoạt động)
+    @Bean
+    ApplicationRunner videoSlugBackfill(VideoRepository videoRepository) {
+        return args -> {
+            try {
+                int updated = 0;
+                for (Video video : videoRepository.findAllBySlugIsNull()) {
+                    String baseSlug = normalizeTitleToSlug(video.getTitle());
+                    String slug = baseSlug;
+                    int counter = 2;
+                    while (videoRepository.existsBySlug(slug)) {
+                        slug = baseSlug + "-" + counter;
+                        counter++;
+                    }
+                    video.setSlug(slug);
+                    videoRepository.save(video);
+                    updated++;
+                }
+                if (updated > 0) {
+                    log.info("Đã backfill slug cho {} video cũ", updated);
+                }
+            } catch (Exception e) {
+                log.warn("Không thể backfill slug video: {}", e.getMessage());
+            }
+        };
+    }
+
+    // Chuyển tiêu đề video thành slug (bỏ dấu tiếng Việt, viết thường, dấu gạch ngang)
+    private String normalizeTitleToSlug(String title) {
+        if (title == null || title.isBlank()) {
+            return "video-" + java.util.UUID.randomUUID().toString().substring(0, 8);
+        }
+        String normalized = java.text.Normalizer.normalize(title, java.text.Normalizer.Form.NFD)
+                .replaceAll("\\p{M}", "")
+                .replaceAll("[đĐ]", "d")
+                .toLowerCase()
+                .replaceAll("[^a-z0-9\\s-]", "")
+                .trim()
+                .replaceAll("\\s+", "-")
+                .replaceAll("-+", "-");
+        if (normalized.isEmpty()) {
+            normalized = "video-" + java.util.UUID.randomUUID().toString().substring(0, 8);
+        }
+        return normalized;
     }
 
     // Dọn dẹp bản ghi reaction trùng lặp (cùng user + video) do dữ liệu cũ

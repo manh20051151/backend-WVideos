@@ -111,6 +111,7 @@ public class ChannelAnalyticsService {
             topVideos.add(ChannelAnalyticsResponse.TopVideo.builder()
                     .id(v.getId())
                     .title(v.getTitle())
+                    .slug(v.getSlug())
                     .thumbnailUrl(v.getThumbnailUrl() != null ? v.getThumbnailUrl() : v.getSplashImageUrl())
                     .views(v.getViews() != null ? v.getViews() : 0L)
                     .likes(likesByVideo.getOrDefault(v.getId(), 0L))

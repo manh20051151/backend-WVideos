@@ -16,6 +16,7 @@ public class VideoResponse {
     
     private String id;
     private String title;
+    private String slug; // Slug URL-friendly cho link /watch/{slug}
     private String description;
     private String fileCode;
     private String downloadUrl;

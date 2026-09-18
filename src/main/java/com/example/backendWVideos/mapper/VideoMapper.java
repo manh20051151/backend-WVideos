@@ -30,6 +30,7 @@ public class VideoMapper {
         return VideoResponse.builder()
                 .id(video.getId())
                 .title(video.getTitle())
+                .slug(video.getSlug())
                 .description(video.getDescription())
                 .fileCode(video.getFileCode())
                 .downloadUrl(video.getDownloadUrl())

@@ -10,6 +10,7 @@ import lombok.*;
 public class ShortsResponse {
     private String id;
     private String title;
+    private String slug;            // Slug URL-friendly cho link /watch/{slug}
     private String streamUrl;       // direct mp4 URL đã resolve (từ cache Redis)
     private String thumbnailUrl;
     private String splashImageUrl;

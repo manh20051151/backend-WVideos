@@ -46,6 +46,7 @@ public class ChannelAnalyticsResponse {
     public static class TopVideo {
         private String id;
         private String title;
+        private String slug; // Slug URL-friendly cho link /watch/{slug}
         private String thumbnailUrl;
         private long views;
         private long likes;

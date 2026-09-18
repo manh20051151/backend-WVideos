@@ -20,6 +20,16 @@ import java.time.LocalDateTime;
 
 @Repository
 public interface VideoRepository extends JpaRepository<Video, String> {
+
+    // Tìm theo slug (URL-friendly) - fetch categories, user, tags để tránh LazyInitializationException khi serialize
+    @EntityGraph(attributePaths = {"categories", "user", "tags"})
+    Optional<Video> findBySlug(String slug);
+
+    // Lấy các video chưa có slug (để backfill)
+    List<Video> findAllBySlugIsNull();
+
+    // Kiểm tra slug đã tồn tại
+    boolean existsBySlug(String slug);
     
     Optional<Video> findByFileCode(String fileCode);
     

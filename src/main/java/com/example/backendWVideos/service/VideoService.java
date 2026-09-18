@@ -82,6 +82,52 @@ public class VideoService {
     private double creatorSharePercent;
 
     /**
+     * Tạo slug từ tiêu đề video (bỏ dấu tiếng Việt, viết thường, dấu gạch ngang)
+     */
+    private String generateSlug(String title) {
+        if (title == null || title.isBlank()) {
+            return "video-" + java.util.UUID.randomUUID().toString().substring(0, 8);
+        }
+
+        String normalized = java.text.Normalizer.normalize(title, java.text.Normalizer.Form.NFD)
+                .replaceAll("\\p{M}", "") // Bỏ dấu tiếng Việt
+                .replaceAll("[đĐ]", "d")
+                .toLowerCase()
+                .replaceAll("[^a-z0-9\\s-]", "")
+                .trim()
+                .replaceAll("\\s+", "-")
+                .replaceAll("-+", "-");
+
+        if (normalized.isEmpty()) {
+            normalized = "video-" + java.util.UUID.randomUUID().toString().substring(0, 8);
+        }
+        return normalized;
+    }
+
+    /**
+     * Tạo slug duy nhất (thêm hậu tố -2, -3... nếu trùng)
+     */
+    private String generateUniqueSlug(String title) {
+        String baseSlug = generateSlug(title);
+        String slug = baseSlug;
+        int counter = 2;
+        while (videoRepository.existsBySlug(slug)) {
+            slug = baseSlug + "-" + counter;
+            counter++;
+        }
+        return slug;
+    }
+
+    /**
+     * Tìm video theo ID hoặc slug (hỗ trợ link /watch/{slug} và /watch/{id})
+     */
+    private Video findVideoByIdOrSlug(String idOrSlug) {
+        return videoRepository.findById(idOrSlug)
+                .or(() -> videoRepository.findBySlug(idOrSlug))
+                .orElseThrow(() -> new AppException(ErrorCode.VIDEO_NOT_FOUND));
+    }
+
+    /**
      * Init upload - Tạo video record và lấy upload server
      */
     @Transactional
@@ -99,6 +145,7 @@ public class VideoService {
         // Tạo video record với status UPLOADING
         Video video = Video.builder()
                 .title(request.getTitle())
+                .slug(generateUniqueSlug(request.getTitle()))
                 .description(request.getDescription())
                 .isPublic(request.getIsPublic())
                 .status(VideoStatus.UPLOADING)
@@ -311,6 +358,7 @@ public class VideoService {
         // Tạo video record với status UPLOADING
         Video video = Video.builder()
                 .title(request.getTitle())
+                .slug(generateUniqueSlug(request.getTitle()))
                 .description(request.getDescription())
                 .isPublic(request.getIsPublic())
                 .status(VideoStatus.UPLOADING)
@@ -678,8 +726,7 @@ public class VideoService {
      */
     @Transactional(readOnly = true)
     public VideoResponse getVideoById(String videoId, String userEmail) {
-        Video video = videoRepository.findById(videoId)
-                .orElseThrow(() -> new AppException(ErrorCode.VIDEO_NOT_FOUND));
+        Video video = findVideoByIdOrSlug(videoId);
         
         // Nếu video không công khai và không có người dùng đăng nhập thì không cho xem
         if (!video.getIsPublic() && (userEmail == null || userEmail.isEmpty() || "anonymousUser".equals(userEmail))) {
@@ -749,8 +796,7 @@ public class VideoService {
         User buyer = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
 
-        Video video = videoRepository.findById(videoId)
-                .orElseThrow(() -> new AppException(ErrorCode.VIDEO_NOT_FOUND));
+        Video video = findVideoByIdOrSlug(videoId);
 
         Long price = video.getPrice() != null ? video.getPrice() : 0L;
         if (price == 0) {
@@ -819,6 +865,7 @@ public class VideoService {
         }
 
         // Cập nhật thông tin
+        // Lưu ý: slug giữ nguyên khi đổi tiêu đề (giống YouTube) để link đã chia sẻ không bị vỡ
         if (request.getTitle() != null) {
             video.setTitle(request.getTitle());
         }
@@ -911,6 +958,10 @@ public class VideoService {
      */
     @Transactional
     public void incrementViews(String videoId, String clientIp) {
+        // Hỗ trợ cả ID lẫn slug trên URL
+        Video video = findVideoByIdOrSlug(videoId);
+        videoId = video.getId();
+
         // Rate limiting: chỉ cho phép tăng view từ cùng IP sau 5 phút
         String cacheKey = "view_" + videoId + "_" + clientIp;
 
@@ -1000,6 +1051,7 @@ public class VideoService {
         return ShortsResponse.builder()
                 .id(video.getId())
                 .title(video.getTitle())
+                .slug(video.getSlug())
                 .streamUrl(resolveStreamUrl(video))
                 .thumbnailUrl(video.getThumbnailUrl())
                 .splashImageUrl(video.getSplashImageUrl())
@@ -1192,8 +1244,7 @@ public class VideoService {
      */
     @Transactional(readOnly = true)
     public Page<VideoResponse> getRelatedVideos(String currentVideoId, Pageable pageable) {
-        Video currentVideo = videoRepository.findById(currentVideoId)
-            .orElseThrow(() -> new AppException(ErrorCode.VIDEO_NOT_FOUND));
+        Video currentVideo = findVideoByIdOrSlug(currentVideoId);
 
         // Cho phép người dùng không đăng nhập xem video liên quan của video public
         if (currentVideo.getStatus() != VideoStatus.READY || !currentVideo.getIsPublic()) {
