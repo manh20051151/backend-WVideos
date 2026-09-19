@@ -141,7 +141,8 @@ public interface VideoRepository extends JpaRepository<Video, String> {
                                  Pageable pageable);
 
     // === Shorts feed ===
-    // Chỉ video dưới 2 phút (120 giây) mới được hiển thị trong feed shorts
+    // Hiện TẤT CẢ video dưới 2 phút (120 giây), kể cả video riêng tư và video có phí.
+    // Video có phí -> frontend hiện "phải mua", video riêng tư -> phải đăng nhập mới xem được.
 
     @EntityGraph(attributePaths = {"categories", "user", "tags"})
     @Query("SELECT v FROM Video v WHERE v.status = 'READY' " +

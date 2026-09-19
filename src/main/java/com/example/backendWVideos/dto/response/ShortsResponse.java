@@ -25,5 +25,7 @@ public class ShortsResponse {
     private Boolean isPaid;        // price != null && price > 0
     private Boolean purchased;     // user hiện tại đã mua chưa (chỉ khi đã đăng nhập)
     private Boolean isOwner;       // video thuộc sở hữu của user hiện tại
+    private Boolean isPublic;      // video riêng tư (false) hay công khai (true)
+    private Boolean requireLogin;  // true = phải đăng nhập mới xem được (video riêng tư + chưa đăng nhập)
     private java.time.LocalDateTime createdAt; // dùng làm keyset cursor
 }

@@ -739,14 +739,14 @@ public class VideoService {
                 response.setIsSubscribed(isSubscribed);
                 
                 // Lấy reaction của user (lấy bản ghi đầu tiên nếu tồn tại trùng lặp)
-                var userReactions = videoReactionRepository.findByUserIdAndVideoId(currentUser.getId(), videoId);
+                var userReactions = videoReactionRepository.findByUserIdAndVideoId(currentUser.getId(), video.getId());
                 userReactions.stream().findFirst().ifPresent(r -> response.setUserReaction(r.getReactionType()));
             }
         }
         
         // Lấy số lượng reactions
-        long likeCount = videoReactionRepository.countByVideoIdAndReactionType(videoId, com.example.backendWVideos.enums.VideoReactionType.LIKE);
-        long dislikeCount = videoReactionRepository.countByVideoIdAndReactionType(videoId, com.example.backendWVideos.enums.VideoReactionType.DISLIKE);
+        long likeCount = videoReactionRepository.countByVideoIdAndReactionType(video.getId(), com.example.backendWVideos.enums.VideoReactionType.LIKE);
+        long dislikeCount = videoReactionRepository.countByVideoIdAndReactionType(video.getId(), com.example.backendWVideos.enums.VideoReactionType.DISLIKE);
         response.setLikeCount(likeCount);
         response.setDislikeCount(dislikeCount);
 
@@ -755,7 +755,7 @@ public class VideoService {
         boolean isOwner = currentUserId != null && video.getUser() != null
                 && currentUserId.equals(video.getUser().getId());
         boolean purchased = currentUserId != null
-                && videoPurchaseRepository.existsByUserIdAndVideoId(currentUserId, videoId);
+                && videoPurchaseRepository.existsByUserIdAndVideoId(currentUserId, video.getId());
         boolean hasAccess = price == 0 || isOwner || purchased;
 
         response.setIsPurchased(purchased);
@@ -797,17 +797,17 @@ public class VideoService {
         }
 
         // Đã mua rồi thì không mua lại
-        if (videoPurchaseRepository.existsByUserIdAndVideoId(buyer.getId(), videoId)) {
+        if (videoPurchaseRepository.existsByUserIdAndVideoId(buyer.getId(), video.getId())) {
             throw new AppException(ErrorCode.VIDEO_ALREADY_PURCHASED);
         }
 
         // Trừ tiền người mua (nếu không đủ sẽ ném INSUFFICIENT_BALANCE)
         userFinancialService.updateUserBalance(buyer.getId(), price.doubleValue(), "SUBTRACT");
 
-        // Lưu giao dịch mua video
+        // Lưu giao dịch mua video (lưu id thật, không phải slug)
         videoPurchaseRepository.save(VideoPurchase.builder()
                 .userId(buyer.getId())
-                .videoId(videoId)
+                .videoId(video.getId())
                 .price(price)
                 .build());
 
@@ -975,6 +975,9 @@ public class VideoService {
 
     /**
      * Đánh dấu video đã xem (dùng cho shorts feed, không hiện lại video đã xem).
+     * Chỉ đánh dấu khi user CÓ QUYỀN XEM video (miễn phí công khai, đã mua hoặc đã đăng nhập).
+     * Nếu đánh dấu cả video không xem được thì guest scroll qua video riêng tư/video có phí
+     * sẽ khiến video đó biến mất vĩnh viễn khỏi feed dù user chưa xem bao giờ.
      * Chạy async + idempotent (unique user_id+video_id) nên an toàn khi gọi nhiều lần.
      */
     @Async
@@ -984,6 +987,28 @@ public class VideoService {
             return;
         }
         try {
+            Video video = videoRepository.findById(videoId).orElse(null);
+            if (video == null) {
+                return;
+            }
+
+            // Kiểm tra quyền xem: video có phí phải đã mua/là chủ, video riêng tư phải đăng nhập
+            boolean paid = video.getPrice() != null && video.getPrice() > 0;
+            boolean isPublic = video.getIsPublic() == null || video.getIsPublic();
+            boolean hasUser = userId != null && !userId.isBlank();
+            // Lấy userId đăng nhập thật (guestId không tính là đăng nhập)
+            String authUserId = resolveAuthUserId();
+            boolean authenticated = authUserId != null && !authUserId.isBlank();
+            boolean isOwner = authenticated && video.getUser() != null
+                    && authUserId.equals(video.getUser().getId());
+            boolean purchased = paid && authenticated
+                    && videoPurchaseRepository.existsByUserIdAndVideoId(authUserId, video.getId());
+            boolean canStream = (!paid || purchased || isOwner) && (isPublic || authenticated);
+            if (!canStream) {
+                log.debug("⛔ Bỏ qua đánh dấu đã xem (user chưa có quyền xem video): {}", videoId);
+                return;
+            }
+
             if (watchedVideoRepository.existsByUserIdAndVideoId(userId, videoId)) {
                 return;
             }
@@ -1000,12 +1025,32 @@ public class VideoService {
     }
 
     /**
-     * Lấy feed shorts: danh sách video public READY, loại trừ những video user đã xem,
-     * kèm theo streamUrl (direct mp4) đã resolve từ cache Redis để phát ngay không delay.
+     * Lấy userId của user đã đăng nhập từ SecurityContext (không fallback guestId).
+     * Dùng để kiểm tra quyền: video riêng tư cần đăng nhập, video có phí cần đã mua.
+     */
+    private String resolveAuthUserId() {
+        var authentication = org.springframework.security.core.context.SecurityContextHolder
+                .getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return null;
+        }
+        String email = authentication.getName();
+        if (email == null || email.isBlank() || "anonymousUser".equals(email)) {
+            return null;
+        }
+        User user = userRepository.findByEmail(email).orElse(null);
+        return user != null ? user.getId() : null;
+    }
+
+    /**
+     * Lấy feed shorts: danh sách TẤT CẢ video READY dưới 120s (kể cả video có phí và riêng tư),
+     * loại trừ những video user đã xem, kèm theo streamUrl (direct mp4) đã resolve từ cache Redis.
+     * - Video có phí: streamUrl null trừ khi đã mua hoặc là chủ video (frontend hiện "phải mua")
+     * - Video riêng tư: streamUrl null nếu chưa đăng nhập (frontend hiện "phải đăng nhập")
      * Dùng keyset pagination theo createdAt để tránh OFFSET sâu.
      */
     @Transactional(readOnly = true)
-    public List<ShortsResponse> getShorts(String userId, LocalDateTime lastCreatedAt, int size, boolean loop) {
+    public List<ShortsResponse> getShorts(String userId, String authUserId, LocalDateTime lastCreatedAt, int size, boolean loop) {
         int limit = Math.min(Math.max(size, 1), 30);
         Pageable pageable = PageRequest.of(0, limit);
 
@@ -1021,26 +1066,33 @@ public class VideoService {
 
         // Resolve streamUrl song song (dựa vào Redis cache nên lần 2 rất nhanh)
         return videos.parallelStream()
-                .map(v -> toShortsResponse(v, userId))
+                .map(v -> toShortsResponse(v, authUserId))
                 .collect(Collectors.toList());
     }
 
-    private ShortsResponse toShortsResponse(Video video, String userId) {
+    private ShortsResponse toShortsResponse(Video video, String authUserId) {
         boolean paid = video.getPrice() != null && video.getPrice() > 0;
+        boolean isPublic = video.getIsPublic() == null || video.getIsPublic();
+        boolean hasUser = authUserId != null && !authUserId.isBlank();
         boolean purchased = false;
         boolean isOwner = false;
-        if (userId != null && !userId.isBlank() && video.getUser() != null) {
-            isOwner = userId.equals(video.getUser().getId());
+        if (hasUser && video.getUser() != null) {
+            isOwner = authUserId.equals(video.getUser().getId());
             if (paid) {
-                purchased = videoPurchaseRepository.existsByUserIdAndVideoId(userId, video.getId());
+                purchased = videoPurchaseRepository.existsByUserIdAndVideoId(authUserId, video.getId());
             }
         }
-        boolean hasUser = userId != null && !userId.isBlank();
+        // Video riêng tư: phải đăng nhập mới xem được
+        boolean requireLogin = !isPublic && !hasUser;
+        // Bảo mật: chỉ trả streamUrl khi được phép xem:
+        // - Video có phí: phải đã mua hoặc là chủ video
+        // - Video riêng tư: phải đăng nhập
+        boolean canStream = (!paid || purchased || isOwner) && (isPublic || hasUser);
         return ShortsResponse.builder()
                 .id(video.getId())
                 .title(video.getTitle())
                 .slug(video.getSlug())
-                .streamUrl(resolveStreamUrl(video))
+                .streamUrl(canStream ? resolveStreamUrl(video) : null)
                 .thumbnailUrl(video.getThumbnailUrl())
                 .splashImageUrl(video.getSplashImageUrl())
                 .userFullName(video.getUser() != null ? video.getUser().getFullName() : null)
@@ -1051,11 +1103,13 @@ public class VideoService {
                 .likeCount(videoReactionRepository.countByVideoIdAndReactionType(
                         video.getId(), com.example.backendWVideos.enums.VideoReactionType.LIKE))
                 .isLiked(hasUser && videoReactionRepository.existsByUserIdAndVideoIdAndReactionType(
-                        userId, video.getId(), com.example.backendWVideos.enums.VideoReactionType.LIKE))
+                        authUserId, video.getId(), com.example.backendWVideos.enums.VideoReactionType.LIKE))
                 .price(video.getPrice())
                 .isPaid(paid)
                 .purchased(purchased)
                 .isOwner(isOwner)
+                .isPublic(isPublic)
+                .requireLogin(requireLogin)
                 .createdAt(video.getCreatedAt())
                 .build();
     }

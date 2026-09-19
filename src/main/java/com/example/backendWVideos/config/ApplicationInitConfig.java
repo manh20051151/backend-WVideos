@@ -198,8 +198,29 @@ public class ApplicationInitConfig {
         return slug;
     }
 
+// Sửa dữ liệu cũ: video_purchases có thể bị lưu nhầm slug làm video_id
+    // (trước khi fix purchaseVideo). Đối chiếu lại với bảng videos bằng slug.
+    @Bean
+    ApplicationRunner fixVideoPurchaseIds(javax.sql.DataSource dataSource) {
+        return args -> {
+            try (var conn = dataSource.getConnection()) {
+                String sql = "UPDATE video_purchases vp " +
+                        "JOIN videos v ON v.slug = vp.video_id " +
+                        "SET vp.video_id = v.id";
+                try (var st = conn.createStatement()) {
+                    int updated = st.executeUpdate(sql);
+                    if (updated > 0) {
+                        log.info("Đã sửa {} giao dịch mua video bị lưu nhầm slug thành id", updated);
+                    }
+                }
+            } catch (Exception e) {
+                log.warn("Không sửa được video_purchases: {}", e.getMessage());
+            }
+        };
+    }
+
     // Sửa cột type bảng notifications: ddl-auto không tự cập nhật ENUM trong MySQL,
-// nên thêm giá trị COMMENT_BANNED vào danh sách enum (chạy lại mỗi lần start, không gây lỗi)
+    // nên thêm giá trị COMMENT_BANNED vào danh sách enum (chạy lại mỗi lần start, không gây lỗi)
     @Bean
     ApplicationRunner fixNotificationTypeColumn(javax.sql.DataSource dataSource) {
         return args -> {

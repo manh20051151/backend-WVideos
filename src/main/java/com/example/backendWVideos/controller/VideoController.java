@@ -512,6 +512,14 @@ public class VideoController {
         return guestId;
     }
 
+    /**
+     * Resolve userId của user ĐÃ ĐĂNG NHẬP (không fallback guestId).
+     * Trả null nếu là khách - dùng để kiểm tra quyền xem video riêng tư.
+     */
+    private String resolveAuthUserId() {
+        return resolveUserId(null);
+    }
+
     @Operation(summary = "Mark video watched", description = "Đánh dấu video đã xem (dùng cho shorts feed, không hiện lại)")
     @PostMapping("/{videoId}/watched")
     @PreAuthorize("permitAll()")
@@ -526,7 +534,9 @@ public class VideoController {
                 .build();
     }
 
-    @Operation(summary = "Get shorts feed", description = "Feed video dạng TikTok: loại trừ video đã xem, trả kèm streamUrl đã resolve. Khi loop=true sẽ không loại trừ video đã xem để feed lặp vô hạn.")
+    @Operation(summary = "Get shorts feed", description = "Feed video dạng TikTok: hiện TẤT CẢ video READY dưới 120s (kể cả video có phí và riêng tư). " +
+            "Video có phí -> streamUrl null + isPaid=true (phải mua), video riêng tư -> streamUrl null + requireLogin=true (phải đăng nhập). " +
+            "Loại trừ video đã xem, khi loop=true sẽ không loại trừ để feed lặp vô hạn.")
     @GetMapping("/shorts")
     @PreAuthorize("permitAll()")
     public ApiResponse<List<ShortsResponse>> getShorts(
@@ -535,7 +545,10 @@ public class VideoController {
             @RequestParam(required = false) String guestId,
             @RequestParam(defaultValue = "false") boolean loop
     ) {
-        String userId = resolveUserId(guestId);
+        // viewerId: user đăng nhập hoặc guestId - dùng để loại trừ video đã xem
+        String viewerId = resolveUserId(guestId);
+        // authUserId: chỉ user đăng nhập thật - dùng để kiểm tra mua/chủ sở hữu/quyền xem video riêng tư
+        String authUserId = resolveAuthUserId();
         LocalDateTime cursor = null;
         if (lastCreatedAt != null && !lastCreatedAt.isBlank()) {
             try {
@@ -544,7 +557,7 @@ public class VideoController {
                 cursor = null;
             }
         }
-        List<ShortsResponse> result = videoService.getShorts(userId, cursor, size, loop);
+        List<ShortsResponse> result = videoService.getShorts(viewerId, authUserId, cursor, size, loop);
         return ApiResponse.<List<ShortsResponse>>builder()
                 .result(result)
                 .build();
