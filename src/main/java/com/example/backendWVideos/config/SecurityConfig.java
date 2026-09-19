@@ -57,7 +57,11 @@ public class SecurityConfig {
         "/footer",          // Public footer info
         "/footer/links",    // Public footer links
         "/footer/links/**", // Public footer link detail
-        "/footer/settings"  // Public footer settings
+        "/footer/settings", // Public footer settings
+        "/news",            // Danh sách tin tức đã xuất bản
+        "/news/*",          // Chi tiết tin tức đã xuất bản (endpoint /news/admin vẫn được bảo vệ bởi @PreAuthorize)
+        "/news-categories", // Danh mục tin tức đang hoạt động
+        "/news-categories/*" // Chi tiết danh mục (endpoint /news-categories/admin vẫn được bảo vệ bởi @PreAuthorize)
     };
 
     private final String[] PUBLIC_ENDPOINTS_POST = {
