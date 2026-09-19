@@ -161,6 +161,17 @@ public interface VideoRepository extends JpaRepository<Video, String> {
                                             @Param("lastCreatedAt") LocalDateTime lastCreatedAt,
                                             Pageable pageable);
 
+    // === Tìm kiếm thông minh (header search) ===
+    // Tìm video theo tiêu đề, mô tả hoặc tag. Ưu tiên video nhiều view trước.
+
+    @EntityGraph(attributePaths = {"categories", "user", "tags"})
+    @Query("SELECT v FROM Video v WHERE v.status = 'READY' AND " +
+           "(LOWER(v.title) LIKE LOWER(CONCAT('%', :q, '%')) OR " +
+           "LOWER(v.description) LIKE LOWER(CONCAT('%', :q, '%')) OR " +
+           "EXISTS (SELECT 1 FROM Video v2 JOIN v2.tags t WHERE v2.id = v.id AND LOWER(t) LIKE LOWER(CONCAT('%', :q, '%')))) " +
+           "ORDER BY v.views DESC, v.createdAt DESC")
+    Page<Video> searchByKeyword(@Param("q") String q, Pageable pageable);
+
     // === Thống kê kênh của người dùng ===
 
     // Đếm số video theo trạng thái (không tính DELETED)

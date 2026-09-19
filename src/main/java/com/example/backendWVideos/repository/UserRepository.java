@@ -31,6 +31,13 @@ public interface UserRepository extends JpaRepository<User, String> {
             "OR LOWER(u.email) LIKE LOWER(CONCAT('%', :kw, '%'))")
     org.springframework.data.domain.Page<User> searchByKeyword(@Param("kw") String kw, org.springframework.data.domain.Pageable pageable);
 
+    // Tìm kiếm kênh công khai theo tên hiển thị hoặc slug kênh
+    // (không tìm theo email để không lộ email người dùng ra tìm kiếm công cộng)
+    @Query("SELECT u FROM User u WHERE LOWER(u.fullName) LIKE LOWER(CONCAT('%', :q, '%')) " +
+            "OR LOWER(u.channelSlug) LIKE LOWER(CONCAT('%', :q, '%')) " +
+            "ORDER BY u.fullName ASC")
+    org.springframework.data.domain.Page<User> searchChannelsByKeyword(@Param("q") String q, org.springframework.data.domain.Pageable pageable);
+
     // Bỏ qua @SQLRestriction(locked = false) khi cần kiểm tra login, để phân biệt rõ user bị khóa
     @Query(value = "SELECT * FROM users WHERE email = :email", nativeQuery = true)
     Optional<User> findByEmailIncludingLocked(@Param("email") String email);
