@@ -1,20 +1,29 @@
 package com.example.backendWVideos.controller;
 
 import com.example.backendWVideos.dto.request.ApiResponse;
+import com.example.backendWVideos.dto.request.SearchHistoryRequest;
 import com.example.backendWVideos.dto.response.ChannelSearchResult;
 import com.example.backendWVideos.dto.response.NewsResponse;
+import com.example.backendWVideos.dto.response.SearchHistoryResponse;
 import com.example.backendWVideos.dto.response.SearchSuggestResponse;
 import com.example.backendWVideos.dto.response.VideoResponse;
 import com.example.backendWVideos.service.SearchService;
 import io.swagger.v3.oas.annotations.Operation;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
 
 /**
  * API tìm kiếm thông minh công khai: gợi ý nhanh trên header + tìm kiếm đầy đủ theo từng loại.
@@ -81,5 +90,41 @@ public class SearchController {
 
     private int clamp(int limit) {
         return Math.min(Math.max(limit, 0), 10);
+    }
+
+    // ==================== Lịch sử tìm kiếm (giống YouTube) ====================
+
+    @Operation(summary = "Get search history", description = "Lịch sử tìm kiếm gần đây của user hiện tại (khách trả rỗng, frontend dùng localStorage)")
+    @GetMapping("/history")
+    public ApiResponse<List<SearchHistoryResponse>> getHistory(
+            @RequestParam(defaultValue = "10") int limit
+    ) {
+        return ApiResponse.<List<SearchHistoryResponse>>builder()
+                .result(searchService.getHistory(limit))
+                .build();
+    }
+
+    @Operation(summary = "Save search history", description = "Lưu từ khóa vừa tìm vào lịch sử (từ khóa cũ thì tăng số lần tìm). Yêu cầu đăng nhập")
+    @PostMapping("/history")
+    public ApiResponse<SearchHistoryResponse> saveHistory(@Valid @RequestBody SearchHistoryRequest request) {
+        return ApiResponse.<SearchHistoryResponse>builder()
+                .result(searchService.saveHistory(request.getQuery()))
+                .build();
+    }
+
+    @Operation(summary = "Delete search history item", description = "Xóa 1 mục lịch sử tìm kiếm của user hiện tại")
+    @DeleteMapping("/history/{id}")
+    public ApiResponse<Boolean> deleteHistoryItem(@PathVariable Long id) {
+        return ApiResponse.<Boolean>builder()
+                .result(searchService.deleteHistoryItem(id))
+                .build();
+    }
+
+    @Operation(summary = "Clear search history", description = "Xóa toàn bộ lịch sử tìm kiếm của user hiện tại")
+    @DeleteMapping("/history")
+    public ApiResponse<Integer> clearHistory() {
+        return ApiResponse.<Integer>builder()
+                .result(searchService.clearHistory())
+                .build();
     }
 }
