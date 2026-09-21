@@ -125,6 +125,17 @@ public enum ErrorCode {
     FOOTER_LINK_EXISTED(10102, "Liên kết này đã tồn tại trong khu vực này của footer", HttpStatus.BAD_REQUEST),
     FOOTER_SETTING_NOT_FOUND(10103, "Không tìm thấy cấu hình footer", HttpStatus.NOT_FOUND),
     FOOTER_SETTING_KEY_EXISTED(10104, "Khóa cấu hình footer đã tồn tại", HttpStatus.BAD_REQUEST),
+
+    // Video report errors (báo cáo vi phạm video)
+    VIDEO_REPORT_NOT_FOUND(10201, "Không tìm thấy báo cáo", HttpStatus.NOT_FOUND),
+    VIDEO_ALREADY_REPORTED(10202, "Bạn đã báo cáo video này rồi", HttpStatus.BAD_REQUEST),
+    CANNOT_REPORT_OWN_VIDEO(10203, "Không thể báo cáo video của chính mình", HttpStatus.BAD_REQUEST),
+    REPORT_ALREADY_PROCESSED(10204, "Báo cáo đã được xử lý, không thể rút lại", HttpStatus.BAD_REQUEST),
+    REPORT_DISMISS_NOTE_REQUIRED(10205, "Cần ghi rõ lý do khi bỏ qua báo cáo", HttpStatus.BAD_REQUEST),
+    REPORT_REASON_NOT_FOUND(10206, "Không tìm thấy lý do báo cáo", HttpStatus.NOT_FOUND),
+    REPORT_REASON_CODE_EXISTED(10207, "Mã lý do báo cáo đã tồn tại", HttpStatus.BAD_REQUEST),
+    REPORT_REASON_IN_USE(10208, "Lý do này đã được dùng trong báo cáo, không thể xóa - hãy ẩn nó thay vì xóa", HttpStatus.BAD_REQUEST),
+    REPORT_REASON_INVALID(10209, "Lý do báo cáo không hợp lệ hoặc đã bị ẩn", HttpStatus.BAD_REQUEST),
     ;
 
     ErrorCode(int code, String message, HttpStatusCode statusCode) {

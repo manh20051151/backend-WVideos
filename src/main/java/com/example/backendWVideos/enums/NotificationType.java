@@ -7,5 +7,7 @@ public enum NotificationType {
     LIKE,          // Có người thích video của bạn
     NEW_VIDEO,     // Kênh bạn đã đăng ký có video mới
     ANNOUNCEMENT,  // Thông báo từ quản trị viên gửi đến người dùng
-    COMMENT_BANNED // Người dùng bị khóa quyền bình luận (admin)
+    COMMENT_BANNED,// Người dùng bị khóa quyền bình luận (admin)
+    REPORT_RESOLVED,  // Báo cáo vi phạm của bạn đã được xử lý (admin)
+    REPORT_DISMISSED  // Báo cáo vi phạm của bạn đã bị bỏ qua kèm lý do (admin)
 }

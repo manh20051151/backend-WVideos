@@ -63,7 +63,8 @@ public class SecurityConfig {
         "/news-categories", // Danh mục tin tức đang hoạt động
         "/news-categories/*", // Chi tiết danh mục (endpoint /news-categories/admin vẫn được bảo vệ bởi @PreAuthorize)
         "/search",           // Tìm kiếm thông minh - gợi ý nhanh
-        "/search/**"         // Tìm kiếm video / kênh / tin tức (phân trang)
+        "/search/**",        // Tìm kiếm video / kênh / tin tức (phân trang)
+        "/report-reasons"    // Danh sách lý do báo cáo đang kích hoạt (public, dùng cho modal báo cáo)
     };
 
     private final String[] PUBLIC_ENDPOINTS_POST = {

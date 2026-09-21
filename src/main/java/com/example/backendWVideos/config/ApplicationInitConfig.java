@@ -220,17 +220,18 @@ public class ApplicationInitConfig {
     }
 
     // Sửa cột type bảng notifications: ddl-auto không tự cập nhật ENUM trong MySQL,
-    // nên thêm giá trị COMMENT_BANNED vào danh sách enum (chạy lại mỗi lần start, không gây lỗi)
+    // nên thêm giá trị mới vào danh sách enum (chạy lại mỗi lần start, không gây lỗi)
     @Bean
     ApplicationRunner fixNotificationTypeColumn(javax.sql.DataSource dataSource) {
         return args -> {
             try (var conn = dataSource.getConnection()) {
                 String sql = "ALTER TABLE notifications MODIFY COLUMN type " +
-                        "ENUM('COMMENT','SUBSCRIBE','PURCHASE','LIKE','NEW_VIDEO','ANNOUNCEMENT','COMMENT_BANNED') NOT NULL";
+                        "ENUM('COMMENT','SUBSCRIBE','PURCHASE','LIKE','NEW_VIDEO','ANNOUNCEMENT','COMMENT_BANNED'," +
+                        "'REPORT_RESOLVED','REPORT_DISMISSED') NOT NULL";
                 try (var st = conn.createStatement()) {
                     st.executeUpdate(sql);
                 }
-                log.info("Đã cập nhật cột type bảng notifications (thêm COMMENT_BANNED)");
+                log.info("Đã cập nhật cột type bảng notifications (thêm REPORT_RESOLVED, REPORT_DISMISSED)");
             } catch (Exception e) {
                 log.warn("Không cập nhật được cột type bảng notifications: {}", e.getMessage());
             }

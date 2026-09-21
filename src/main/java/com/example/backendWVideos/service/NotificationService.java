@@ -203,6 +203,31 @@ public class NotificationService {
         return null;
     }
 
+    /**
+     * Thông báo cho người báo cáo khi admin xử lý báo cáo của họ:
+     * - RESOLVED: báo cáo đã được xử lý
+     * - DISMISSED: báo cáo bị bỏ qua kèm lý do admin
+     */
+    public void notifyReportProcessed(String reporterId, boolean resolved,
+                                      String videoId, String videoTitle,
+                                      String adminNote, String thumbnailUrl) {
+        String title = resolved ? "Báo cáo đã được xử lý" : "Báo cáo đã được bỏ qua";
+        String videoLabel = (videoTitle != null && !videoTitle.isBlank())
+                ? "\"" + videoTitle + "\"" : "video bạn đã báo cáo";
+        String content;
+        if (resolved) {
+            content = "Quản trị viên đã xem xét và xử lý báo cáo của bạn về video " + videoLabel
+                    + ". Cảm ơn bạn đã giúp nền tảng an toàn hơn.";
+        } else {
+            String note = (adminNote != null && !adminNote.isBlank()) ? adminNote : "";
+            content = "Quản trị viên đã xem xét và bỏ qua báo cáo của bạn về video " + videoLabel
+                    + (note.isEmpty() ? "" : ". Lý do: " + note);
+        }
+        create(resolved ? NotificationType.REPORT_RESOLVED : NotificationType.REPORT_DISMISSED,
+                reporterId, title, content, videoId,
+                null, "Quản trị viên", thumbnailUrl, null);
+    }
+
     // ==================== REST QUERIES ====================
 
     @Transactional(readOnly = true)
