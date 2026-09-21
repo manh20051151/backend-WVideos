@@ -1,0 +1,109 @@
+# CI/CD backend WVideos (Spring Boot + Docker + self-hosted runner)
+#
+# Luồng:
+#   1. CI (mọi push + pull request, chạy trên GitHub): compile + đóng gói jar
+#   2. Docker (chỉ push nhánh master): build image, đẩy Docker Hub
+#      tag `latest` + mã commit (SHA)
+#   3. Deploy (chỉ push nhánh master): chạy TRỰC TIẾP trên máy chủ 24/7 qua
+#      self-hosted runner (label "wvideos") - pull image + restart compose
+#
+# Secrets cần cấu hình trong GitHub repo (Settings > Secrets and variables > Actions):
+#   DOCKERHUB_USERNAME  - tên tài khoản Docker Hub (VD: manh20051151)
+#   DOCKERHUB_TOKEN     - access token Docker Hub (hub.docker.com > Account Settings > Security)
+#   DEPLOY_PATH         - thư mục deploy TRÊN MÁY CHỦ (VD: E:\deploy\wvideos)
+#
+# Máy chủ 24/7 cần (xem docs/CI-CD.md):
+#   - Docker Desktop chạy nền
+#   - GitHub Actions self-hosted runner với label "wvideos" (cài 1 lần)
+
+name: Backend CI/CD
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+  workflow_dispatch: # cho phép chạy thủ công từ tab Actions
+
+env:
+  IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/wvideos-backend
+
+jobs:
+  # ===== Giai đoạn CI: build =====
+  build:
+    name: Build & Verify
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout mã nguồn
+        uses: actions/checkout@v4
+
+      - name: Cài Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+
+      # Bỏ qua test vì cần MySQL + Redis thật; test chạy ở máy dev
+      - name: Build jar
+        run: mvn -B -ntp verify -DskipTests
+
+      - name: Upload jar (artifacts để tải về nếu cần)
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-jar
+          path: target/*.jar
+          retention-days: 7
+
+  # ===== Giai đoạn CD: build image + đẩy Docker Hub =====
+  docker:
+    name: Docker Build & Push
+    needs: build
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout mã nguồn
+        uses: actions/checkout@v4
+
+      - name: Cài Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Đăng nhập Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build & push image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ env.IMAGE }}:latest
+            ${{ env.IMAGE }}:${{ github.sha }}
+          # Cache layer Docker ngay trên GitHub Actions để build nhanh hơn
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ===== Giai đoạn CD: deploy chạy trực tiếp trên máy chủ 24/7 =====
+  # (nhờ self-hosted runner với label "wvideos")
+  deploy:
+    name: Deploy trên máy chủ
+    needs: docker
+    runs-on: [self-hosted, wvideos]
+    steps:
+      - name: Pull image mới + restart
+        shell: powershell
+        run: |
+          Set-Location "${{ secrets.DEPLOY_PATH }}\backend" -ErrorAction Stop
+          $env:IMAGE = "${{ secrets.DOCKERHUB_USERNAME }}/wvideos-backend:latest"
+          Write-Host "🔄 Pulling image mới..."
+          docker compose -f docker-compose.prod.yml pull
+          if ($LASTEXITCODE -ne 0) { Write-Host "##vso[task.logissue type=error]❌ Pull image thất bại (exit $LASTEXITCODE)"; exit 1 }
+          Write-Host "🚀 Restarting container..."
+          docker compose -f docker-compose.prod.yml up -d --remove-orphans
+          if ($LASTEXITCODE -ne 0) { Write-Host "##vso[task.logissue type=error]❌ Up container thất bại (exit $LASTEXITCODE)"; exit 1 }
+          docker image prune -f
+          Write-Host "✅ Deploy xong!"
+          docker compose -f docker-compose.prod.yml ps

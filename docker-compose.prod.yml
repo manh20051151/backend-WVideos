@@ -1,0 +1,33 @@
+# Docker compose chạy backend WVideos trên server production.
+# MySQL + Redis dùng DB có sẵn trên máy chủ (không đóng gói trong compose).
+#
+# Cách dùng (trên server):
+#   1. Tạo thư mục deploy, ví dụ: /opt/wvideos/backend
+#   2. Copy file này vào, tạo file .env cạnh nó (xem docs/CI-CD.md)
+#   3. Chạy: IMAGE=manh20051151/wvideos-backend:latest docker compose -f docker-compose.prod.yml up -d
+#      (workflow CI/CD tự chạy lệnh này khi deploy)
+
+services:
+  backend:
+    image: ${IMAGE:-manh20051151/wvideos-backend:latest}
+    container_name: wvideos-backend
+    restart: unless-stopped
+    ports:
+      - "8081:8081"
+    # Cấu hình đọc từ file .env cạnh compose (DB_URL, DB_USERNAME, DB_PASSWORD, REDIS_HOST,...)
+    env_file:
+      - .env
+    # Trên Linux, cho phép trỏ "host.docker.internal" về máy chủ để nối MySQL/Redis cài ngoài
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8081/api/nav-items"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

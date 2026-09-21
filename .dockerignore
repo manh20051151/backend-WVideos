@@ -1,0 +1,29 @@
+# Git / IDE
+.git
+.gitignore
+.idea
+.vscode
+
+# Kilo/Kiro/Claude config
+.kilo
+.kiro
+.claude
+.agents
+
+# Build output
+target
+
+# Environment - KHÔNG đưa secret vào image (inject qua env khi chạy)
+.env
+.env.*
+
+# Docs / scripts không cần cho build
+docs
+scripts
+*.md
+*.sql
+
+# OS
+*.bin
+Thumbs.db
+.DS_Store
