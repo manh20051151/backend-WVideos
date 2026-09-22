@@ -116,6 +116,7 @@ public class SecurityConfig {
                         ).permitAll()
                     .requestMatchers(HttpMethod.GET, "/users/notoken/**").permitAll()
                     .requestMatchers(HttpMethod.POST, "/users/forgot-password/**").permitAll()
+                    .requestMatchers(HttpMethod.POST, "/users/reset-password").permitAll()
                     .anyRequest().authenticated()
             )
             .oauth2ResourceServer(oauth2 ->

@@ -38,6 +38,10 @@ public enum ErrorCode {
     CONFIRMATION_FAILED(5005, "Xác nhận đăng ký thất bại", HttpStatus.NOT_FOUND),
     EMAIL_EXISTED(5006, "Email đã tồn tại", HttpStatus.NOT_FOUND),
 
+    // Email template
+    EMAIL_TEMPLATE_NOT_FOUND(5101, "Không tìm thấy email template", HttpStatus.NOT_FOUND),
+    EMAIL_TEMPLATE_MISSING_URL(5102, "Nội dung email phải chứa placeholder {{url}} để người nhận nhận được link hành động", HttpStatus.BAD_REQUEST),
+
 
 
     CATEGORY_NOT_FOUND(6001, "Không tìm thấy danh mục", HttpStatus.NOT_FOUND),

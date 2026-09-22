@@ -4,6 +4,7 @@ package com.example.backendWVideos.service;
 import com.example.backendWVideos.entity.Role;
 import com.example.backendWVideos.entity.User;
 import com.example.backendWVideos.entity.PendingRegistration;
+import com.example.backendWVideos.entity.PasswordResetToken;
 import com.example.backendWVideos.enums.AuthProvider;
 import com.example.backendWVideos.exception.AppException;
 import com.example.backendWVideos.exception.ErrorCode;
@@ -35,8 +36,10 @@ import com.example.backendWVideos.mapper.VideoMapper;
 import com.example.backendWVideos.repository.RoleRepository;
 import com.example.backendWVideos.repository.UserRepository;
 import com.example.backendWVideos.repository.PendingRegistrationRepository;
+import com.example.backendWVideos.repository.PasswordResetTokenRepository;
 import com.example.backendWVideos.repository.VideoRepository;
 import com.example.backendWVideos.repository.SubscriptionRepository;
+import com.example.backendWVideos.util.EmailTemplates;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 import lombok.AccessLevel;
@@ -75,26 +78,21 @@ public class UserService {
     final PasswordEncoder passwordEncoder;
     final JavaMailSender mailSender;
     final PendingRegistrationRepository pendingRegistrationRepository;
+    final PasswordResetTokenRepository passwordResetTokenRepository;
     final VideoRepository videoRepository;
     final VideoMapper videoMapper;
     final SubscriptionRepository subscriptionRepository;
     final NotificationService notificationService;
+    final EmailTemplateService emailTemplateService;
 
     @Value("${app.registration.token.expiration-minutes:30}")
     int expirationMinutes;
-    
+
+    @Value("${app.reset-password.token.expiration-minutes:30}")
+    int resetPasswordExpirationMinutes;
+
     @Value("${app.frontend-url:http://localhost:3000}")
     String frontendUrl;
-
-    private static final String EMAIL_SUBJECT = "Khôi phục mật khẩu";
-    private static final String EMAIL_CONTENT = """
-        <p>Xin chào,</p>
-        <p>Bạn đã yêu cầu khôi phục mật khẩu. Dưới đây là mật khẩu mới của bạn:</p>
-        <p><strong>%s</strong></p>
-        <p>Vui lòng đăng nhập và thay đổi mật khẩu ngay sau khi nhận được email này.</p>
-        <p>Trân trọng,</p>
-        <p>Hệ thống</p>
-        """;
 
     private static final String DEFAULT_AVATAR_URL =
             "https://res.cloudinary.com/dnvtmbmne/image/upload/v1744707484/et5vc9r9fejjgrjsvxyn.jpg";
@@ -430,44 +428,82 @@ public class UserService {
                 .map(userMapper::toUserResponse);
     }
 
-    public void resetPassword(String email) {
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+    /**
+     * Gửi email đặt lại mật khẩu cho user (nếu email tồn tại và không bị khóa).
+     * Không tiết lộ email có tồn tại hay không để chống dò tài khoản.
+     * Tài khoản Google chưa có mật khẩu cũng được phép tạo mật khẩu local qua flow này.
+     */
+    public void forgotPassword(String email) {
+        // Tài khoản không tồn tại hoặc bị khóa -> im lặng bỏ qua,
+        // vẫn trả về thông báo chung để không lộ thông tin
+        Optional<User> userOpt = userRepository.findByEmail(email);
+        if (userOpt.isEmpty()) {
+            return;
+        }
+        User user = userOpt.get();
 
-        String newPassword = generateRandomPassword();
+        // Vô hiệu hóa các token cũ, tạo token mới (one-time, hết hạn sau resetPasswordExpirationMinutes)
+        passwordResetTokenRepository.deleteAllByUser(user);
+        PasswordResetToken resetToken = PasswordResetToken.builder()
+                .token(UUID.randomUUID().toString())
+                .user(user)
+                .expiryDate(LocalDateTime.now().plusMinutes(resetPasswordExpirationMinutes))
+                .build();
+        passwordResetTokenRepository.save(resetToken);
+
+        sendResetPasswordEmail(user, resetToken);
+    }
+
+    /**
+     * Đặt lại mật khẩu bằng token từ email.
+     */
+    @Transactional
+    public void resetPassword(String token, String newPassword) {
+        PasswordResetToken resetToken = passwordResetTokenRepository.findByToken(token)
+                .orElseThrow(() -> new AppException(ErrorCode.INVALID_TOKEN));
+
+        if (resetToken.isExpired()) {
+            passwordResetTokenRepository.delete(resetToken);
+            throw new AppException(ErrorCode.TOKEN_EXPIRED);
+        }
+
+        if (resetToken.isUsed()) {
+            throw new AppException(ErrorCode.INVALID_TOKEN);
+        }
+
+        User user = resetToken.getUser();
         user.setPassword(passwordEncoder.encode(newPassword));
         userRepository.save(user);
 
-        sendNewPasswordEmail(user.getEmail(), newPassword);
+        // Token đã dùng -> vô hiệu hóa toàn bộ token cũ của user này
+        resetToken.setUsed(true);
+        passwordResetTokenRepository.save(resetToken);
+        passwordResetTokenRepository.deleteAllByUser(user);
+        log.info("Đặt lại mật khẩu thành công cho user: {}", user.getEmail());
     }
 
-    private String generateRandomPassword() {
-        String characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-        StringBuilder sb = new StringBuilder(8);
-        Random random = new Random();
-
-        for (int i = 0; i < 8; i++) {
-            int index = random.nextInt(characters.length());
-            sb.append(characters.charAt(index));
-        }
-
-        return sb.toString();
-    }
-
-    private void sendNewPasswordEmail(String toEmail, String newPassword) {
-        MimeMessage message = mailSender.createMimeMessage();
+    private void sendResetPasswordEmail(User user, PasswordResetToken resetToken) {
+        String resetUrl = frontendUrl + "/reset-password?token=" + resetToken.getToken();
+        var rendered = emailTemplateService.getRendered(EmailTemplates.KEY_RESET_PASSWORD,
+                java.util.Map.of(
+                        "name", user.getFullName() != null ? user.getFullName() : user.getEmail(),
+                        "url", resetUrl,
+                        "minutes", String.valueOf(resetPasswordExpirationMinutes)));
 
         try {
-            MimeMessageHelper helper = new MimeMessageHelper(message, true);
-            helper.setFrom("nguyenvietmanh1409@gmail.com");
-            helper.setTo(toEmail);
-            helper.setSubject(EMAIL_SUBJECT);
-            helper.setText(String.format(EMAIL_CONTENT, newPassword), true);
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
 
+            helper.setFrom("nguyenvietmanh1409@gmail.com");
+            helper.setTo(user.getEmail());
+            helper.setSubject(rendered.subject());
+            helper.setText(rendered.body(), true);
             mailSender.send(message);
-        } catch (MessagingException e) {
-            log.error("Failed to send email", e);
-            throw new AppException(ErrorCode.EMAIL_SENDING_FAILED);
+        } catch (Exception e) {
+            // SMTP thất bại -> KHÔNG ném lỗi ra ngoài để không lộ email nào đang tồn tại,
+            // in link ra console để dev xác nhận thủ công khi chưa cấu hình Gmail App Password.
+            log.warn("Email khôi phục mật khẩu KHÔNG gửi được ({}) - dùng link dưới đây thay cho email thật:", e.getMessage());
+            log.warn("To: {}\nReset link: {}", user.getEmail(), resetUrl);
         }
     }
 
@@ -511,14 +547,11 @@ public class UserService {
     @Retry(name = "emailSending")
     private void sendConfirmationEmail(PendingRegistration registration) {
         String confirmationUrl = frontendUrl + "/confirm-registration?token=" + registration.getToken();
-        String emailContent = String.format("""
-            <h2>Xác nhận đăng ký tài khoản</h2>
-            <p>Xin chào %s,</p>
-            <p>Vui lòng click vào link bên dưới để hoàn tất đăng ký tài khoản:</p>
-            <a href="%s">Xác nhận đăng ký</a>
-            <p>Link này sẽ hết hạn sau %d phút.</p>
-            <p>Nếu bạn không yêu cầu đăng ký tài khoản, vui lòng bỏ qua email này.</p>
-            """, registration.getEmail(), confirmationUrl, expirationMinutes);
+        var rendered = emailTemplateService.getRendered(EmailTemplates.KEY_CONFIRMATION,
+                java.util.Map.of(
+                        "email", registration.getEmail(),
+                        "url", confirmationUrl,
+                        "minutes", String.valueOf(expirationMinutes)));
 
         try {
             MimeMessage message = mailSender.createMimeMessage();
@@ -526,14 +559,14 @@ public class UserService {
 
             helper.setFrom("nguyenvietmanh1409@gmail.com");
             helper.setTo(registration.getEmail());
-            helper.setSubject("Xác nhận đăng ký tài khoản");
-            helper.setText(emailContent, true);
+            helper.setSubject(rendered.subject());
+            helper.setText(rendered.body(), true);
             mailSender.send(message);
         } catch (Exception e) {
             // SMTP thất bại (vd: sai Gmail App Password) -> không chặn đăng ký,
-            // in toàn bộ email ra console để dev xác nhận thủ công bằng link.
-            log.warn("Email xác nhận KHÔNG gửi được ({}) - dùng nội dung dưới đây thay cho email thật:", e.getMessage());
-            log.warn("To: {}\nSubject: Xác nhận đăng ký tài khoản\n\n{}", registration.getEmail(), emailContent);
+            // in link ra console để dev xác nhận thủ công.
+            log.warn("Email xác nhận KHÔNG gửi được ({}) - dùng link dưới đây thay cho email thật:", e.getMessage());
+            log.warn("To: {}\nConfirmation link: {}", registration.getEmail(), confirmationUrl);
         }
     }
 

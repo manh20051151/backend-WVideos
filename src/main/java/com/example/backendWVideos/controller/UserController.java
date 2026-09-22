@@ -250,9 +250,25 @@ public class UserController {
             throw new AppException(ErrorCode.INVALID_DATA);
         }
 
-        userService.resetPassword(request.getEmail());
+        userService.forgotPassword(request.getEmail());
+        // Thông báo chung cho mọi trường hợp để không lộ email nào có tài khoản
         return ApiResponse.<Void>builder()
-                .message("Mật khẩu mới đã được gửi đến email của bạn")
+                .message("Nếu email tồn tại, hướng dẫn đặt lại mật khẩu đã được gửi đến email của bạn")
+                .build();
+    }
+
+    @PostMapping("/reset-password")
+    public ApiResponse<Void> resetPassword(
+            @Valid @RequestBody ResetPasswordRequest request,
+            BindingResult bindingResult) {
+
+        if (bindingResult.hasErrors()) {
+            throw new AppException(ErrorCode.INVALID_DATA);
+        }
+
+        userService.resetPassword(request.getToken(), request.getPassword());
+        return ApiResponse.<Void>builder()
+                .message("Đặt lại mật khẩu thành công. Bạn có thể đăng nhập với mật khẩu mới.")
                 .build();
     }
     
