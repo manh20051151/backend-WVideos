@@ -433,6 +433,7 @@ public class UserService {
      * Không tiết lộ email có tồn tại hay không để chống dò tài khoản.
      * Tài khoản Google chưa có mật khẩu cũng được phép tạo mật khẩu local qua flow này.
      */
+    @Transactional
     public void forgotPassword(String email) {
         // Tài khoản không tồn tại hoặc bị khóa -> im lặng bỏ qua,
         // vẫn trả về thông báo chung để không lộ thông tin
