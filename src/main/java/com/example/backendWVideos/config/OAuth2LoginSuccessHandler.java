@@ -63,13 +63,22 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
             if (user != null && user.isLocked()) {
                 throw new AppException(ErrorCode.USER_LOCKED);
             }
-            
+
+            // Cập nhật avatar Google cho user đã tồn tại nhưng chưa có ảnh đại diện
+            // (không ghi đè avatar user đã tự upload)
+            String googleAvatar = normalizeGoogleAvatarUrl(oAuth2User.getAttribute("picture"));
+            if (user != null && googleAvatar != null
+                    && (user.getAvatar() == null || user.getAvatar().isBlank())) {
+                user.setAvatar(googleAvatar);
+                userRepository.save(user);
+            }
+
             if (user == null) {
                 // Tạo user mới nếu chưa tồn tại hoàn toàn
                 user = new User();
                 user.setEmail(email);
                 user.setFullName(name);
-                user.setAvatar(oAuth2User.getAttribute("picture"));
+                user.setAvatar(googleAvatar);
                 // Sinh slug kênh duy nhất từ tên
                 String baseSlug = com.example.backendWVideos.util.SlugUtils.slugify(name,
                         email != null && email.contains("@") ? email.substring(0, email.indexOf('@')) : "channel");
@@ -127,4 +136,15 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
                     frontendUrl + "/oauth2/redirect?error=" + errorParam);
         }
     }
-} 
+
+    /**
+     * Google trả URL ảnh đại diện kích thước nhỏ (=s96-c), tăng lên =s400
+     * để hiển thị sắc nét trên trang cá nhân/kênh.
+     */
+    private String normalizeGoogleAvatarUrl(String url) {
+        if (url == null || url.isBlank()) {
+            return null;
+        }
+        return url.replaceFirst("=s\\d+(-c)?$", "=s400");
+    }
+}
