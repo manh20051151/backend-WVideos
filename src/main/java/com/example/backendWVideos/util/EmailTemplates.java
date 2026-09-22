@@ -32,6 +32,32 @@ public final class EmailTemplates {
     private static final String PAGE_BG = "#f4f6f8";
 
     /**
+     * Khối logo trong header email: nếu admin đã cấu hình logo thì hiển thị ảnh,
+     * ngược lại fallback chữ "wd video" như thiết kế gốc.
+     */
+    private static String headerLogoBlock() {
+        return "{{logo_block}}";
+    }
+
+    /**
+     * Khối logo dạng ảnh (dùng khi admin đã upload logo).
+     */
+    public static String logoImgHtml(String logoUrl) {
+        return """
+            <a href="%s" style="text-decoration:none;"><img src="%s" alt="WVideos" width="140" style="display:block;height:auto;border:0;max-width:180px;border-radius:8px;"></a>
+            """.formatted(logoUrl, logoUrl);
+    }
+
+    /**
+     * Khối logo dạng chữ mặc định khi chưa cấu hình logo.
+     */
+    public static String textLogoHtml() {
+        return """
+            <span style="display:inline-block;background-color:#ffffff;color:%s;font-size:22px;font-weight:bold;padding:4px 10px;border-radius:8px;">wd</span><span style="color:#ffffff;font-size:22px;font-weight:bold;">video</span>
+            """.formatted(BRAND);
+    }
+
+    /**
      * Khung chung: nền xám nhạt, card trắng bo góc, header teal với logo, footer mờ.
      */
     private static String shell(String title, String bodyHtml) {
@@ -45,7 +71,7 @@ public final class EmailTemplates {
 
               <!-- Header -->
               <tr><td style="background-color:%s;padding:28px 40px;">
-                <span style="display:inline-block;background-color:#ffffff;color:%s;font-size:22px;font-weight:bold;padding:4px 10px;border-radius:8px;">wd</span><span style="color:#ffffff;font-size:22px;font-weight:bold;">video</span>
+                %s
               </td></tr>
 
               <!-- Tiêu đề -->
@@ -69,7 +95,7 @@ public final class EmailTemplates {
             </table>
             </body>
             </html>
-            """.formatted(PAGE_BG, PAGE_BG, BRAND, BRAND, TEXT_PRIMARY, title, TEXT_PRIMARY, bodyHtml);
+            """.formatted(PAGE_BG, PAGE_BG, BRAND, headerLogoBlock(), TEXT_PRIMARY, title, TEXT_PRIMARY, bodyHtml);
     }
 
     /**

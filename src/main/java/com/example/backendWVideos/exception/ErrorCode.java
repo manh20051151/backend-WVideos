@@ -42,6 +42,9 @@ public enum ErrorCode {
     EMAIL_TEMPLATE_NOT_FOUND(5101, "Không tìm thấy email template", HttpStatus.NOT_FOUND),
     EMAIL_TEMPLATE_MISSING_URL(5102, "Nội dung email phải chứa placeholder {{url}} để người nhận nhận được link hành động", HttpStatus.BAD_REQUEST),
 
+    // Site setting
+    SITE_SETTING_NOT_FOUND(5201, "Không tìm thấy cấu hình site", HttpStatus.NOT_FOUND),
+
 
 
     CATEGORY_NOT_FOUND(6001, "Không tìm thấy danh mục", HttpStatus.NOT_FOUND),

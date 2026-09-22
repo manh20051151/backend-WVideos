@@ -25,6 +25,7 @@ import java.util.Map;
 public class EmailTemplateService {
 
     final EmailTemplateRepository emailTemplateRepository;
+    final SiteSettingService siteSettingService;
 
     /**
      * Kết quả sau khi render placeholder.
@@ -34,6 +35,7 @@ public class EmailTemplateService {
 
     /**
      * Lấy template (từ DB nếu admin đã chỉnh, ngược lại dùng mặc định) và render placeholder.
+     * Tự động tiêm khối logo theo cấu hình của admin (placeholder {{logo_block}}).
      */
     public RenderedEmail getRendered(String key, Map<String, String> values) {
         EmailTemplate template = emailTemplateRepository.findByTemplateKey(key).orElse(null);
@@ -41,9 +43,15 @@ public class EmailTemplateService {
         String subject = template != null ? template.getSubject() : EmailTemplates.defaultSubject(key);
         String body = template != null ? template.getBody() : EmailTemplates.defaultBody(key);
 
+        Map<String, String> allValues = new java.util.HashMap<>(values);
+        String logoUrl = siteSettingService.getLogoUrl();
+        allValues.put("logo_block", logoUrl != null
+                ? EmailTemplates.logoImgHtml(logoUrl)
+                : EmailTemplates.textLogoHtml());
+
         return new RenderedEmail(
-                EmailTemplates.render(subject, values),
-                EmailTemplates.render(body, values));
+                EmailTemplates.render(subject, allValues),
+                EmailTemplates.render(body, allValues));
     }
 
     /**

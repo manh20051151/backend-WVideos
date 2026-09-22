@@ -115,6 +115,7 @@ public class SecurityConfig {
                             "/webjars/**"
                         ).permitAll()
                     .requestMatchers(HttpMethod.GET, "/users/notoken/**").permitAll()
+                    .requestMatchers(HttpMethod.GET, "/site-settings").permitAll()
                     .requestMatchers(HttpMethod.POST, "/users/forgot-password/**").permitAll()
                     .requestMatchers(HttpMethod.POST, "/users/reset-password").permitAll()
                     .anyRequest().authenticated()
