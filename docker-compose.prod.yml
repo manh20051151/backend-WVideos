@@ -13,7 +13,9 @@ services:
     container_name: wvideos-backend
     restart: unless-stopped
     ports:
-      - "8081:8081"
+      # Chỉ mở trên localhost: Cloudflare Tunnel (cloudflared) vào được,
+      # máy ngoài LAN/internet không truy cập trực tiếp được port này
+      - "127.0.0.1:8081:8081"
     # Cấu hình đọc từ file .env cạnh compose (DB_URL, DB_USERNAME, DB_PASSWORD, REDIS_HOST,...)
     env_file:
       - .env

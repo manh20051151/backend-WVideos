@@ -253,7 +253,7 @@ public class UserController {
         userService.forgotPassword(request.getEmail());
         // Thông báo chung cho mọi trường hợp để không lộ email nào có tài khoản
         return ApiResponse.<Void>builder()
-                .message("Nếu email tồn tại, hướng dẫn đặt lại mật khẩu đã được gửi đến email của bạn")
+                .message("Nếu email tồn tại, hướng dẫn đặt lại mật khẩu đã được gửi đến email của bạn. Vui lòng kiểm tra cả mục Thư rác (Spam) nếu không thấy email trong hộp thư đến.")
                 .build();
     }
 
