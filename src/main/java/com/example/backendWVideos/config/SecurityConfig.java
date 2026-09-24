@@ -54,6 +54,7 @@ public class SecurityConfig {
         "/videos/*/comments",  // Comments
         "/videos/*/related",  // Related videos
         "/videos/liked/*",  // Video công khai đã thích của user (tab trang kênh) - /videos/liked chính mình vẫn cần đăng nhập
+        "/videos/tags/trending",  // Tag thịnh hành (đám mây tags trang chủ)
         "/categories",     // Public categories
         "/nav-items",       // Public navigation menu
         "/nav-items/**",    // Public navigation menu detail

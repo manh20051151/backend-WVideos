@@ -259,6 +259,16 @@ public class VideoController {
                 .build();
     }
 
+    @Operation(summary = "Get trending tags", description = "Tag có tổng lượt xem cao nhất - đám mây tags trên trang chủ")
+    @GetMapping("/tags/trending")
+    public ApiResponse<List<com.example.backendWVideos.dto.response.TagTrendingResponse>> getTrendingTags(
+            @RequestParam(defaultValue = "30") int limit
+    ) {
+        return ApiResponse.<List<com.example.backendWVideos.dto.response.TagTrendingResponse>>builder()
+                .result(videoService.getTrendingTags(limit))
+                .build();
+    }
+
     @Operation(summary = "Get video by ID", description = "Lấy chi tiết video")
     @GetMapping("/{videoId}")
     public ApiResponse<VideoResponse> getVideoById(@PathVariable String videoId) {

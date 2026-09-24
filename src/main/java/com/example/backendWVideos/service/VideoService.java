@@ -7,6 +7,7 @@ import com.example.backendWVideos.dto.response.DoodStreamUploadResult;
 import com.example.backendWVideos.dto.response.VideoResponse;
 import com.example.backendWVideos.dto.response.VideoInitUploadResponse;
 import com.example.backendWVideos.dto.response.ShortsResponse;
+import com.example.backendWVideos.dto.response.TagTrendingResponse;
 import com.example.backendWVideos.entity.User;
 import com.example.backendWVideos.entity.Video;
 import com.example.backendWVideos.enums.VideoStatus;
@@ -619,6 +620,23 @@ public class VideoService {
             stripStreamInfo(r);
             return r;
         });
+    }
+
+    /**
+     * Tag thịnh hành: tổng lượt xem các video công khai chứa tag,
+     * dùng cho đám mây tags trên đầu trang chủ.
+     */
+    @Transactional(readOnly = true)
+    public List<TagTrendingResponse> getTrendingTags(int limit) {
+        int safeLimit = Math.min(Math.max(limit, 1), 50);
+        return videoRepository.findTrendingTags(org.springframework.data.domain.PageRequest.of(0, safeLimit))
+                .stream()
+                .map(p -> TagTrendingResponse.builder()
+                        .tag(p.getTag())
+                        .totalViews(p.getTotalViews() != null ? p.getTotalViews() : 0L)
+                        .videoCount(p.getVideoCount() != null ? p.getVideoCount() : 0L)
+                        .build())
+                .toList();
     }
 
     /**

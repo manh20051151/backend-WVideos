@@ -65,6 +65,20 @@ public interface VideoRepository extends JpaRepository<Video, String> {
     @EntityGraph(attributePaths = {"categories", "user", "tags"})
     @Query("SELECT v FROM Video v WHERE v.status = 'READY' AND v.isPublic = true AND :tag MEMBER OF v.tags")
     Page<Video> findPublicVideosByTag(@Param("tag") String tag, Pageable pageable);
+
+    // Tag thịnh hành: tổng lượt xem các video công khai chứa tag (đám mây tags trang chủ)
+    @Query(value = "SELECT t.tag AS tag, COALESCE(SUM(v.views), 0) AS totalViews, COUNT(v.id) AS videoCount " +
+            "FROM video_tags t JOIN videos v ON v.id = t.video_id " +
+            "WHERE v.status = 'READY' AND v.is_public = 1 " +
+            "GROUP BY t.tag ORDER BY totalViews DESC",
+            nativeQuery = true)
+    List<TagTrendingProjection> findTrendingTags(Pageable pageable);
+
+    interface TagTrendingProjection {
+        String getTag();
+        Long getTotalViews();
+        Long getVideoCount();
+    }
     
     // JPQL query với custom sort
     @EntityGraph(attributePaths = {"categories", "user", "tags"})
