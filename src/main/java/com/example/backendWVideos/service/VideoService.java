@@ -560,30 +560,39 @@ public class VideoService {
      */
     @Transactional(readOnly = true)
     public Page<VideoResponse> getPublicVideos(Pageable pageable, String sortType) {
-        return getPublicVideos(pageable, sortType, null);
+        return getPublicVideos(pageable, sortType, null, null);
     }
 
     /**
-     * Lấy video công khai, có thể lọc theo slug category (dropdown Thể loại, trang /category/{slug}).
+     * Lấy video công khai, có thể lọc theo slug category (dropdown Thể loại, trang /category/{slug})
+     * hoặc theo tag (trang /tag/{tag}).
+     * readOnly: giữ Session mở suốt quá trình map response (entity graph chỉ fetch
+     * user/tags của video, không fetch user của category — mapper cần lazy load).
      */
-    public Page<VideoResponse> getPublicVideos(Pageable pageable, String sortType, String categorySlug) {
+    @Transactional(readOnly = true)
+    public Page<VideoResponse> getPublicVideos(Pageable pageable, String sortType, String categorySlug, String tag) {
         String sort = sortType != null ? sortType : "newest";
         Pageable newPageable = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize());
 
+        // Map sort -> field entity, dùng cho cả lọc category lẫn tag
+        String sortField = switch (sort) {
+            case "popular" -> "views";
+            case "favorites" -> "favoritesCount";
+            case "comments" -> "commentsCount";
+            case "longest" -> "duration";
+            default -> "createdAt";
+        };
+        org.springframework.data.domain.Pageable sortedPageable = PageRequest.of(
+                newPageable.getPageNumber(), newPageable.getPageSize(),
+                org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, sortField));
+
         Page<Video> videos;
         if (categorySlug != null && !categorySlug.isBlank()) {
-            // Lọc theo category: sort theo Pageable (mới nhất/xem nhiều/yêu thích/bình luận/dài nhất)
-            String sortField = switch (sort) {
-                case "popular" -> "views";
-                case "favorites" -> "favoritesCount";
-                case "comments" -> "commentsCount";
-                case "longest" -> "duration";
-                default -> "createdAt";
-            };
-            videos = videoRepository.findPublicVideosByCategorySlug(
-                    categorySlug.trim().toLowerCase(),
-                    PageRequest.of(newPageable.getPageNumber(), newPageable.getPageSize(),
-                            org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, sortField)));
+            // Lọc theo category
+            videos = videoRepository.findPublicVideosByCategorySlug(categorySlug.trim().toLowerCase(), sortedPageable);
+        } else if (tag != null && !tag.isBlank()) {
+            // Lọc theo tag
+            videos = videoRepository.findPublicVideosByTag(tag.trim().toLowerCase(), sortedPageable);
         } else {
             switch (sort) {
                 case "popular":

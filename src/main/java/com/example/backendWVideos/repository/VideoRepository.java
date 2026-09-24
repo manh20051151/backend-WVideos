@@ -60,6 +60,11 @@ public interface VideoRepository extends JpaRepository<Video, String> {
     @EntityGraph(attributePaths = {"categories", "user", "tags"})
     @Query("SELECT DISTINCT v FROM Video v JOIN v.categories c WHERE v.status = 'READY' AND v.isPublic = true AND c.slug = :categorySlug")
     Page<Video> findPublicVideosByCategorySlug(@Param("categorySlug") String categorySlug, Pageable pageable);
+
+    // Video công khai có chứa tag (trang /tag/{tag} khi click tag ở watch page)
+    @EntityGraph(attributePaths = {"categories", "user", "tags"})
+    @Query("SELECT v FROM Video v WHERE v.status = 'READY' AND v.isPublic = true AND :tag MEMBER OF v.tags")
+    Page<Video> findPublicVideosByTag(@Param("tag") String tag, Pageable pageable);
     
     // JPQL query với custom sort
     @EntityGraph(attributePaths = {"categories", "user", "tags"})

@@ -209,17 +209,18 @@ public class VideoController {
                 .build();
     }
 
-    @Operation(summary = "Get public videos", description = "Lấy danh sách video công khai, có thể lọc theo slug category")
+    @Operation(summary = "Get public videos", description = "Lấy danh sách video công khai, có thể lọc theo slug category hoặc tag")
     @GetMapping("/public")
     public ApiResponse<Page<VideoResponse>> getPublicVideos(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(defaultValue = "newest") String sort,
-            @RequestParam(required = false) String categorySlug
+            @RequestParam(required = false) String categorySlug,
+            @RequestParam(required = false) String tag
     ) {
         Pageable pageable = PageRequest.of(page, size);
 
-        Page<VideoResponse> videos = videoService.getPublicVideos(pageable, sort, categorySlug);
+        Page<VideoResponse> videos = videoService.getPublicVideos(pageable, sort, categorySlug, tag);
 
         return ApiResponse.<Page<VideoResponse>>builder()
                 .result(videos)
