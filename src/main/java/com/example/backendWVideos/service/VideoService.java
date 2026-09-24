@@ -560,27 +560,39 @@ public class VideoService {
      */
     @Transactional(readOnly = true)
     public Page<VideoResponse> getPublicVideos(Pageable pageable, String sortType) {
+        return getPublicVideos(pageable, sortType, null);
+    }
+
+    /**
+     * Lấy video công khai, có thể lọc theo slug category (dropdown Thể loại, trang /category/{slug}).
+     */
+    public Page<VideoResponse> getPublicVideos(Pageable pageable, String sortType, String categorySlug) {
         String sort = sortType != null ? sortType : "newest";
         Pageable newPageable = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize());
-        
+
         Page<Video> videos;
-        switch (sort) {
-            case "popular":
-                videos = videoRepository.findPublicVideosByViews(newPageable);
-                break;
-            case "favorites":
-                videos = videoRepository.findPublicVideosByFavorites(newPageable);
-                break;
-            case "comments":
-                videos = videoRepository.findPublicVideosByComments(newPageable);
-                break;
-            case "longest":
-                videos = videoRepository.findPublicVideosByDuration(newPageable);
-                break;
-            case "newest":
-            default:
-                videos = videoRepository.findPublicVideosNative(newPageable);
-                break;
+        if (categorySlug != null && !categorySlug.isBlank()) {
+            // Lọc theo category: sắp theo mới nhất
+            videos = videoRepository.findPublicVideosByCategorySlug(categorySlug.trim().toLowerCase(), newPageable);
+        } else {
+            switch (sort) {
+                case "popular":
+                    videos = videoRepository.findPublicVideosByViews(newPageable);
+                    break;
+                case "favorites":
+                    videos = videoRepository.findPublicVideosByFavorites(newPageable);
+                    break;
+                case "comments":
+                    videos = videoRepository.findPublicVideosByComments(newPageable);
+                    break;
+                case "longest":
+                    videos = videoRepository.findPublicVideosByDuration(newPageable);
+                    break;
+                case "newest":
+                default:
+                    videos = videoRepository.findPublicVideosNative(newPageable);
+                    break;
+            }
         }
         
         return videos.map(v -> {
