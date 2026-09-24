@@ -912,6 +912,12 @@ public class VideoService {
             log.info("🖼️ Cập nhật thumbnail cho video: {}", videoId);
         }
 
+        // Cập nhật tags (gửi mảng rỗng = xóa hết tags)
+        if (request.getTags() != null) {
+            video.setTags(request.getTags());
+            log.info("🏷️ Cập nhật tags cho video: {}", videoId);
+        }
+
         video = videoRepository.save(video);
         log.info("✏️ Cập nhật video: {}", videoId);
 
