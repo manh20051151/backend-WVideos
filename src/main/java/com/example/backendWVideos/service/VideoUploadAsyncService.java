@@ -32,7 +32,7 @@ public class VideoUploadAsyncService {
     private final NotificationService notificationService;
     
     // Thư mục lưu file tạm
-    private static final String TEMP_DIR = System.getProperty("java.io.tmpdir") + "/wvideos-uploads/";
+    private static final String TEMP_DIR = System.getProperty("java.io.tmpdir") + "/snha-uploads/";
     
     static {
         // Tạo thư mục nếu chưa tồn tại

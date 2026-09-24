@@ -1,4 +1,4 @@
-# CI/CD backend WVideos (Spring Boot + Docker + self-hosted runner)
+# CI/CD backend snha (Spring Boot + Docker + self-hosted runner)
 #
 # Luồng:
 #   1. CI (mọi push + pull request, chạy trên GitHub): compile + đóng gói jar

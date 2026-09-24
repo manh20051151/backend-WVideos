@@ -1,4 +1,4 @@
-# Docker compose chạy backend WVideos trên server production.
+# Docker compose chạy backend snha trên server production.
 # MySQL + Redis dùng DB có sẵn trên máy chủ (không đóng gói trong compose).
 #
 # Cách dùng (trên server):

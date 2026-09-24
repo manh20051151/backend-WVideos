@@ -1,6 +1,6 @@
-# WVideos Backend API
+# snha Backend API
 
-Backend cho hệ thống WVideos với JWT Authentication và Swagger Documentation.
+Backend cho hệ thống snha với JWT Authentication và Swagger Documentation.
 
 ## Tech Stack
 
@@ -455,5 +455,5 @@ Apache 2.0
 
 ## Contact
 
-- Email: support@wvideos.com
-- Website: https://wvideos.com
+- Email: support@snha.com
+- Website: https://snha.com

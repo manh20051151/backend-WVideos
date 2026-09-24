@@ -5,7 +5,7 @@ Các PowerShell scripts hỗ trợ development và deployment.
 ## 📄 Available Scripts
 
 ### 1. copy-files.ps1
-Copy files từ DocPro backend sang WVideos backend.
+Copy files từ DocPro backend sang snha backend.
 
 **Sử dụng:**
 ```powershell

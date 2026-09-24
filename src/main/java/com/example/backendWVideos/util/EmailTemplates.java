@@ -21,8 +21,8 @@ public final class EmailTemplates {
     public static final String KEY_CONFIRMATION = "CONFIRMATION";
     public static final String KEY_RESET_PASSWORD = "RESET_PASSWORD";
 
-    public static final String DEFAULT_SUBJECT_CONFIRMATION = "Xác nhận đăng ký tài khoản WVideos";
-    public static final String DEFAULT_SUBJECT_RESET_PASSWORD = "Khôi phục mật khẩu WVideos";
+    public static final String DEFAULT_SUBJECT_CONFIRMATION = "Xác nhận đăng ký tài khoản snha";
+    public static final String DEFAULT_SUBJECT_RESET_PASSWORD = "Khôi phục mật khẩu snha";
 
     private static final String BRAND = "#009688";
     private static final String BRAND_DARK = "#00796b";
@@ -33,7 +33,7 @@ public final class EmailTemplates {
 
     /**
      * Khối logo trong header email: nếu admin đã cấu hình logo thì hiển thị ảnh,
-     * ngược lại fallback chữ "wd video" như thiết kế gốc.
+     * ngược lại fallback chữ "snha" như thiết kế gốc.
      */
     private static String headerLogoBlock() {
         return "{{logo_block}}";
@@ -44,7 +44,7 @@ public final class EmailTemplates {
      */
     public static String logoImgHtml(String logoUrl) {
         return """
-            <a href="%s" style="text-decoration:none;"><img src="%s" alt="WVideos" width="140" style="display:block;height:auto;border:0;max-width:180px;border-radius:8px;"></a>
+            <a href="%s" style="text-decoration:none;"><img src="%s" alt="snha" width="140" style="display:block;height:auto;border:0;max-width:180px;border-radius:8px;"></a>
             """.formatted(logoUrl, logoUrl);
     }
 
@@ -53,7 +53,7 @@ public final class EmailTemplates {
      */
     public static String textLogoHtml() {
         return """
-            <span style="display:inline-block;background-color:#ffffff;color:%s;font-size:22px;font-weight:bold;padding:4px 10px;border-radius:8px;">wd</span><span style="color:#ffffff;font-size:22px;font-weight:bold;">video</span>
+            <span style="display:inline-block;background-color:#ffffff;color:%s;font-size:22px;font-weight:bold;padding:4px 10px;border-radius:8px;">snha</span>
             """.formatted(BRAND);
     }
 
@@ -86,8 +86,8 @@ public final class EmailTemplates {
 
               <!-- Footer -->
               <tr><td style="padding:20px 40px;background-color:#f9fafb;border-top:1px solid #eceff1;text-align:center;">
-                <p style="margin:0 0 6px 0;font-size:12px;color:#9ca3af;">Email này được gửi tự động từ hệ thống WVideos. Vui lòng không trả lời email này.</p>
-                <p style="margin:0;font-size:12px;color:#9ca3af;">© 2026 WVideos. All rights reserved.</p>
+                <p style="margin:0 0 6px 0;font-size:12px;color:#9ca3af;">Email này được gửi tự động từ hệ thống snha. Vui lòng không trả lời email này.</p>
+                <p style="margin:0;font-size:12px;color:#9ca3af;">© 2026 snha. All rights reserved.</p>
               </td></tr>
 
             </table>
@@ -148,7 +148,7 @@ public final class EmailTemplates {
     public static String defaultConfirmationBody() {
         String body = """
             <p style="margin:0 0 16px 0;">Xin chào <strong>{{email}}</strong>,</p>
-            <p style="margin:0 0 8px 0;">Cảm ơn bạn đã đăng ký tài khoản <strong>WVideos</strong>.<br>
+            <p style="margin:0 0 8px 0;">Cảm ơn bạn đã đăng ký tài khoản <strong>snha</strong>.<br>
             Nhấn nút bên dưới để kích hoạt tài khoản của bạn:</p>
             %s
             %s
@@ -165,7 +165,7 @@ public final class EmailTemplates {
     public static String defaultResetPasswordBody() {
         String body = """
             <p style="margin:0 0 16px 0;">Xin chào <strong>{{name}}</strong>,</p>
-            <p style="margin:0 0 8px 0;">Chúng tôi nhận được yêu cầu đặt lại mật khẩu cho tài khoản <strong>WVideos</strong> của bạn.<br>
+            <p style="margin:0 0 8px 0;">Chúng tôi nhận được yêu cầu đặt lại mật khẩu cho tài khoản <strong>snha</strong> của bạn.<br>
             Nhấn nút bên dưới để đặt mật khẩu mới:</p>
             %s
             %s

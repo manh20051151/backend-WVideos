@@ -364,9 +364,9 @@ public class VideoService {
         log.info("📹 Tạo video record: {} sau {}ms - Bắt đầu async upload", video.getId(), (endTime - startTime));
 
         // Lưu file tạm trên disk để async method đọc (tránh giữ bytes trong memory)
-        String tempFilePath = System.getProperty("java.io.tmpdir") + "/wvideos-uploads/" + video.getId() + "_" + file.getOriginalFilename();
+        String tempFilePath = System.getProperty("java.io.tmpdir") + "/snha-uploads/" + video.getId() + "_" + file.getOriginalFilename();
         try {
-            File tempDir = new File(System.getProperty("java.io.tmpdir") + "/wvideos-uploads/");
+            File tempDir = new File(System.getProperty("java.io.tmpdir") + "/snha-uploads/");
             if (!tempDir.exists()) {
                 tempDir.mkdirs();
             }

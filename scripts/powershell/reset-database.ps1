@@ -1,7 +1,7 @@
-# Script để reset database WVideos
+# Script để reset database snha
 # Chạy script này để xóa và tạo lại database từ đầu
 
-Write-Host "=== Reset Database WVideos ===" -ForegroundColor Cyan
+Write-Host "=== Reset Database snha ===" -ForegroundColor Cyan
 
 # Tim MySQL executable
 $mysqlPaths = @(

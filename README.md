@@ -1,8 +1,8 @@
-# WVideos Backend API
+# snha Backend API
 
 **Version: 1.1.0**
 
-Backend API cho hệ thống WVideos với JWT Authentication và Swagger Documentation.
+Backend API cho hệ thống snha với JWT Authentication và Swagger Documentation.
 
 ## 🚀 Quick Start
 

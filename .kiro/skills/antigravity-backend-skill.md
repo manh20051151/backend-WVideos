@@ -1,12 +1,12 @@
 ---
-name: Antigravity - WVideos Backend
-description: Skill tối ưu cho Antigravity IDE khi làm việc với WVideos Backend Spring Boot project
+name: Antigravity - snha Backend
+description: Skill tối ưu cho Antigravity IDE khi làm việc với snha Backend Spring Boot project
 ---
 
-# Antigravity IDE - WVideos Backend Skill
+# Antigravity IDE - snha Backend Skill
 
 ## Mục Đích
-Skill này tối ưu hóa cách Antigravity AI làm việc với WVideos Backend, bao gồm code generation, debugging, refactoring, và best practices cho Spring Boot development.
+Skill này tối ưu hóa cách Antigravity AI làm việc với snha Backend, bao gồm code generation, debugging, refactoring, và best practices cho Spring Boot development.
 
 ## Project Context
 

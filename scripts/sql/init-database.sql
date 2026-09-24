@@ -1,4 +1,4 @@
--- Script khởi tạo database cho WVideos Backend
+-- Script khởi tạo database cho snha Backend
 -- Chạy script này sau khi tạo database
 
 -- Tạo database nếu chưa có

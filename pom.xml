@@ -12,7 +12,7 @@
 	<artifactId>backendWVideos</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<name>backendWVideos</name>
-	<description>Backend for WVideos project with JWT Authentication</description>
+	<description>Backend for snha project with JWT Authentication</description>
 	<url/>
 	<licenses>
 		<license/>

@@ -79,7 +79,7 @@ public class ApplicationInitConfig {
             // Cấu hình footer mặc định
             String[][] defaultFooterSettings = {
                     { "brand_description", "Nền tảng chia sẻ video hàng đầu Việt Nam. Khám phá hàng triệu nội dung sáng tạo mỗi ngày." },
-                    { "copyright_text", "WVideos. All rights reserved." },
+                    { "copyright_text", "snha. All rights reserved." },
             };
 
             int settingCount = 0;

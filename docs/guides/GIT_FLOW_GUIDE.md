@@ -1,8 +1,8 @@
-# 🌿 Quy Trình Git Flow - WVideos Backend
+# 🌿 Quy Trình Git Flow - snha Backend
 
 ## 📌 Tổng Quan
 
-Git Flow là quy trình quản lý branch chuẩn cho team development. Document này hướng dẫn chi tiết cách áp dụng Git Flow trong dự án WVideos Backend.
+Git Flow là quy trình quản lý branch chuẩn cho team development. Document này hướng dẫn chi tiết cách áp dụng Git Flow trong dự án snha Backend.
 
 ## 🎯 Cấu Trúc Branches
 

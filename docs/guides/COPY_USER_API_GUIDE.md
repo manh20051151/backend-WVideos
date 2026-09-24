@@ -257,9 +257,9 @@ public class SwaggerConfig {
     public OpenAPI customOpenAPI() {
         return new OpenAPI()
                 .info(new Info()
-                        .title("WVideos Backend API")
+                        .title("snha Backend API")
                         .version("1.0.0")
-                        .description("API documentation cho WVideos Backend với JWT Authentication")
+                        .description("API documentation cho snha Backend với JWT Authentication")
                         .contact(new Contact()
                                 .name("Your Name")
                                 .email("your-email@example.com"))

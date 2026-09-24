@@ -1,7 +1,7 @@
 # Cấu hình Upload File
 
 ## Tổng quan
-Backend WVideos hỗ trợ upload video lên DoodStream với giới hạn file tối đa 2GB.
+Backend snha hỗ trợ upload video lên DoodStream với giới hạn file tối đa 2GB.
 
 ## Cấu hình Spring Boot
 

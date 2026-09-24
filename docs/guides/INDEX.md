@@ -1,6 +1,6 @@
 # Guides Index
 
-Danh sách các hướng dẫn chi tiết cho WVideos Backend.
+Danh sách các hướng dẫn chi tiết cho snha Backend.
 
 ## 📖 Available Guides
 

@@ -350,7 +350,7 @@ public class StreamtapeService {
      * tương tự endpoint /stream-url của DoodStream.
      *
      * Cách 1 (ưu tiên): Account API (login/key) - file/dlticket + file/dl.
-     *   Dùng được cho video thuộc tài khoản Streamtape của bạn (video upload qua WVideos),
+     *   Dùng được cho video thuộc tài khoản Streamtape của bạn (video upload qua snha),
      *   KHÔNG bị IP-bind như get_video của trang embed.
      * Cách 2 (fallback): scrape trang embed + gọi get_video (có thể bị Streamtape chặn theo IP -> 500).
      */

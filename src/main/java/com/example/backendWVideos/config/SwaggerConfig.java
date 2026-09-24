@@ -24,14 +24,14 @@ public class SwaggerConfig {
     public OpenAPI customOpenAPI() {
         return new OpenAPI()
                 .info(new Info()
-                        .title("WVideos Backend API")
+                        .title("snha Backend API")
                         .version("1.0.0")
-                        .description("API documentation cho WVideos Backend với JWT Authentication. " +
+                        .description("API documentation cho snha Backend với JWT Authentication. " +
                                 "Sử dụng JWT token để xác thực các endpoint được bảo vệ.")
                         .contact(new Contact()
-                                .name("WVideos Development Team")
-                                .email("support@wvideos.com")
-                                .url("https://wvideos.com"))
+                                .name("snha Development Team")
+                                .email("support@snha.com")
+                                .url("https://snha.com"))
                         .license(new License()
                                 .name("Apache 2.0")
                                 .url("https://www.apache.org/licenses/LICENSE-2.0.html")))

@@ -14,7 +14,7 @@ Backend đã có sẵn OAuth2 Google setup nhưng đang bị disable. Tài liệ
 1. Click **Create Credentials** > **OAuth client ID**
 2. Chọn **Application type**: Web application
 3. Điền thông tin:
-   - **Name**: WVideos OAuth2
+   - **Name**: snha OAuth2
    - **Authorized JavaScript origins**:
      ```
      http://localhost:3000

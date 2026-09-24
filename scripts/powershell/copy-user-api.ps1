@@ -1,4 +1,4 @@
-# Script PowerShell để copy User API từ DocPro Backend sang WVideos Backend
+# Script PowerShell để copy User API từ DocPro Backend sang snha Backend
 # Tự động thay đổi package name và import statements
 
 $sourceBase = 'e:\projectDoc\source\backend\src\main\java\iuh\fit\backend'
@@ -7,7 +7,7 @@ $targetBase = 'e:\project\WVideos\backendWVideos\src\main\java\com\example\backe
 $oldPackage = 'iuh.fit.backend'
 $newPackage = 'com.example.backendWVideos'
 
-Write-Host '🚀 Bắt đầu copy User API từ DocPro sang WVideos...' -ForegroundColor Green
+Write-Host '🚀 Bắt đầu copy User API từ DocPro sang snha...' -ForegroundColor Green
 Write-Host ''
 
 # Tạo cấu trúc thư mục

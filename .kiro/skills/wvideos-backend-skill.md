@@ -1,12 +1,12 @@
 ---
-name: WVideos Backend Development
-description: Skill để làm việc với WVideos Backend - Spring Boot API với JWT, OAuth2, DoodStream integration
+name: snha Backend Development
+description: Skill để làm việc với snha Backend - Spring Boot API với JWT, OAuth2, DoodStream integration
 ---
 
-# WVideos Backend Development Skill
+# snha Backend Development Skill
 
 ## Mục Đích
-Skill này hướng dẫn AI làm việc hiệu quả với dự án WVideos Backend - một REST API được xây dựng bằng Spring Boot 3.2.2, Java 17, tích hợp JWT authentication, OAuth2 Google, và DoodStream video storage.
+Skill này hướng dẫn AI làm việc hiệu quả với dự án snha Backend - một REST API được xây dựng bằng Spring Boot 3.2.2, Java 17, tích hợp JWT authentication, OAuth2 Google, và DoodStream video storage.
 
 ## Tech Stack
 - **Framework**: Spring Boot 3.2.2

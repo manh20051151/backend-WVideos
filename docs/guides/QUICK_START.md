@@ -1,6 +1,6 @@
-# Quick Start Guide - WVideos Backend
+# Quick Start Guide - snha Backend
 
-Hướng dẫn nhanh để chạy WVideos Backend API với JWT Authentication và Swagger.
+Hướng dẫn nhanh để chạy snha Backend API với JWT Authentication và Swagger.
 
 ## Bước 1: Chuẩn bị
 
@@ -284,14 +284,14 @@ Sau khi setup thành công:
 
 1. ✅ Đọc file `README.md` để hiểu chi tiết về project
 2. ✅ Đọc file `COPY_USER_API_GUIDE.md` để biết cách thêm features mới
-3. ✅ Thêm entities mới cho WVideos (Video, Channel, Comment, etc.)
+3. ✅ Thêm entities mới cho snha (Video, Channel, Comment, etc.)
 4. ✅ Tích hợp với Frontend
 5. ✅ Deploy lên server
 
 ## Liên hệ
 
 Nếu gặp vấn đề, liên hệ:
-- Email: support@wvideos.com
+- Email: support@snha.com
 - GitHub Issues: [link-to-repo]
 
 ---
