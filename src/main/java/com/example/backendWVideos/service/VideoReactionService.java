@@ -102,6 +102,10 @@ public class VideoReactionService {
         // Lấy số lượng sau khi thay đổi
         long likeCount = videoReactionRepository.countByVideoIdAndReactionType(videoId, VideoReactionType.LIKE);
         long dislikeCount = videoReactionRepository.countByVideoIdAndReactionType(videoId, VideoReactionType.DISLIKE);
+
+        // Giữ đồng bộ cột favorites_count = số LIKE thật (dùng cho sort "Yêu thích")
+        video.setFavoritesCount(likeCount);
+        videoRepository.save(video);
         
         // Lấy reaction hiện tại của user (null nếu đã xóa)
         VideoReactionType userReaction = videoReactionRepository.findByUserIdAndVideoId(user.getId(), videoId)

@@ -42,6 +42,8 @@ public class VideoMapper {
                 .fileSize(video.getFileSize())
                 .duration(video.getDuration())
                 .views(video.getViews())
+                // Số LIKE thật (favoritesCount được đồng bộ bởi VideoReactionService + backfill lúc khởi động)
+                .likeCount(video.getFavoritesCount())
                 .commentsCount(video.getCommentsCount())
                 .status(video.getStatus())
                 .isPublic(video.getIsPublic())

@@ -56,8 +56,9 @@ public interface VideoRepository extends JpaRepository<Video, String> {
     Page<Video> findPublicVideosNative(Pageable pageable);
 
     // Video công khai theo slug của category (dropdown Thể loại + trang /category/{slug})
+    // Sort truyền qua Pageable (createdAt/views/favoritesCount/commentsCount/duration)
     @EntityGraph(attributePaths = {"categories", "user", "tags"})
-    @Query("SELECT DISTINCT v FROM Video v JOIN v.categories c WHERE v.status = 'READY' AND v.isPublic = true AND c.slug = :categorySlug ORDER BY v.createdAt DESC")
+    @Query("SELECT DISTINCT v FROM Video v JOIN v.categories c WHERE v.status = 'READY' AND v.isPublic = true AND c.slug = :categorySlug")
     Page<Video> findPublicVideosByCategorySlug(@Param("categorySlug") String categorySlug, Pageable pageable);
     
     // JPQL query với custom sort
@@ -123,8 +124,16 @@ public interface VideoRepository extends JpaRepository<Video, String> {
      * Tăng lượt xem video một cách atomic để tối ưu performance
      */
     @Modifying(flushAutomatically = true, clearAutomatically = true)
-    @Query("UPDATE Video v SET v.views = COALESCE(v.views, 0) + 1 WHERE v.id = :videoId")
+    @Query("UPDATE Video v SET v.views = v.views + 1 WHERE v.id = :videoId")
     int incrementViewsById(@Param("videoId") String videoId);
+
+    // Đồng bộ cột favorites_count = số LIKE thật trong bảng video_reactions
+    // (chạy 1 lần lúc khởi động để sửa dữ liệu cũ, toggleReaction tự giữ đồng bộ về sau)
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query(value = "UPDATE videos v SET v.favorites_count = " +
+            "(SELECT COUNT(*) FROM video_reactions r WHERE r.video_id = v.id AND r.reaction_type = 'LIKE')",
+            nativeQuery = true)
+    int backfillFavoritesCount();
     
     // Lấy tổng lượt xem của user
     @Query("SELECT COALESCE(SUM(v.views), 0) FROM Video v WHERE v.user.id = :userId AND v.status != :status")

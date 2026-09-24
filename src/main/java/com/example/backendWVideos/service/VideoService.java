@@ -572,8 +572,18 @@ public class VideoService {
 
         Page<Video> videos;
         if (categorySlug != null && !categorySlug.isBlank()) {
-            // Lọc theo category: sắp theo mới nhất
-            videos = videoRepository.findPublicVideosByCategorySlug(categorySlug.trim().toLowerCase(), newPageable);
+            // Lọc theo category: sort theo Pageable (mới nhất/xem nhiều/yêu thích/bình luận/dài nhất)
+            String sortField = switch (sort) {
+                case "popular" -> "views";
+                case "favorites" -> "favoritesCount";
+                case "comments" -> "commentsCount";
+                case "longest" -> "duration";
+                default -> "createdAt";
+            };
+            videos = videoRepository.findPublicVideosByCategorySlug(
+                    categorySlug.trim().toLowerCase(),
+                    PageRequest.of(newPageable.getPageNumber(), newPageable.getPageSize(),
+                            org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, sortField)));
         } else {
             switch (sort) {
                 case "popular":
