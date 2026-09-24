@@ -63,8 +63,10 @@ public class NewsService {
     }
 
     @Transactional
-    public NewsResponse getPublishedNewsDetail(String id) {
-        News news = newsRepository.findById(id)
+    public NewsResponse getPublishedNewsDetail(String idOrSlug) {
+        // Hỗ trợ cả UUID lẫn slug trên URL (link ngoài dùng slug cho đẹp, link cũ theo id vẫn hoạt động)
+        News news = newsRepository.findById(idOrSlug)
+                .or(() -> newsRepository.findBySlug(idOrSlug))
                 .orElseThrow(() -> new AppException(ErrorCode.NEWS_NOT_FOUND));
         if (news.getStatus() != NewsStatus.PUBLISHED) {
             throw new AppException(ErrorCode.NEWS_NOT_FOUND);
