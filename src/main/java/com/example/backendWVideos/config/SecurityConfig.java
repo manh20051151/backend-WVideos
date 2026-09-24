@@ -45,12 +45,15 @@ public class SecurityConfig {
     private final String[] PUBLIC_ENDPOINTS_GET = {
         "/users/confirm",
         "/users/confirm/**",
+        "/users/*/profile",  // Trang kênh public
+        "/users/*/videos",   // Video public của kênh (trang channel)
         "/videos/public",  // Public videos list
         "/videos/all",  // All videos list
         "/videos/*",  // Video details (GET only)
         "/videos/*/stream-url",  // Stream URL proxy
         "/videos/*/comments",  // Comments
         "/videos/*/related",  // Related videos
+        "/videos/liked/*",  // Video công khai đã thích của user (tab trang kênh) - /videos/liked chính mình vẫn cần đăng nhập
         "/categories",     // Public categories
         "/nav-items",       // Public navigation menu
         "/nav-items/**",    // Public navigation menu detail

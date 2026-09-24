@@ -164,6 +164,22 @@ public class VideoReactionService {
                     return videoMapper.toVideoResponse(video);
                 });
     }
+
+    /**
+     * Video công khai đã thích bởi user chỉ định (tab "Video đã thích" trên trang kênh).
+     * Chỉ trả video READY + public để không lộ video riêng tư.
+     */
+    @Transactional(readOnly = true)
+    public Page<VideoResponse> getPublicLikedVideos(String userId, Pageable pageable) {
+        return videoReactionRepository
+                .findPublicLikedVideosByUserId(userId, pageable)
+                .map(r -> {
+                    Video video = r.getVideo();
+                    Hibernate.initialize(video.getCategories());
+                    Hibernate.initialize(video.getTags());
+                    return videoMapper.toVideoResponse(video);
+                });
+    }
     
     private User getCurrentUser() {
         var context = SecurityContextHolder.getContext();

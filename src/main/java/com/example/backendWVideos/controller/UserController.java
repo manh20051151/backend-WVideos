@@ -350,11 +350,20 @@ public class UserController {
     }
     
     /**
-     * Lấy thông tin profile của user (dùng cho trang channel)
+     * Lấy thông tin profile của user (dùng cho trang channel).
+     * Khách chưa đăng nhập không thấy email (tránh scrape dữ liệu người dùng).
      */
     @GetMapping("/{userId}/profile")
     public ApiResponse<UserProfileResponse> getUserProfile(@PathVariable String userId) {
         UserProfileResponse profile = userService.getUserProfile(userId);
+
+        boolean isAnonymous = SecurityContextHolder.getContext().getAuthentication() == null
+                || !SecurityContextHolder.getContext().getAuthentication().isAuthenticated()
+                || "anonymousUser".equals(SecurityContextHolder.getContext().getAuthentication().getName());
+        if (isAnonymous) {
+            profile.setEmail(null);
+        }
+
         return ApiResponse.<UserProfileResponse>builder()
                 .code(1000)
                 .message("OK")

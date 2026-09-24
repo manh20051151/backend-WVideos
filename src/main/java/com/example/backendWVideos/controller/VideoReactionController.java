@@ -56,4 +56,19 @@ public class VideoReactionController {
                 .result(videos)
                 .build());
     }
+
+    // Video công khai đã thích bởi user chỉ định (tab trên trang kênh)
+    @GetMapping("/liked/{userId}")
+    public ResponseEntity<ApiResponse<Page<VideoResponse>>> getPublicLikedVideos(
+            @PathVariable String userId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "12") int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        Page<VideoResponse> videos = videoReactionService.getPublicLikedVideos(userId, pageable);
+        return ResponseEntity.ok(ApiResponse.<Page<VideoResponse>>builder()
+                .code(1000)
+                .message("OK")
+                .result(videos)
+                .build());
+    }
 }
