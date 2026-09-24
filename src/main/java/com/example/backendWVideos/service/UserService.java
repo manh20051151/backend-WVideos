@@ -812,7 +812,23 @@ public class UserService {
         int limit = Math.min(Math.max(size, 1), 50);
         Pageable pageable = PageRequest.of(Math.max(page, 0), limit,
                 org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "createdAt"));
-        Page<Video> videos = videoRepository.findByUserIdAndStatus(user.getId(), VideoStatus.READY, pageable);
+
+        // Chủ kênh xem kênh của mình: thấy cả video riêng tư.
+        // Người xem khác/khách: chỉ thấy video công khai (không lộ video riêng tư)
+        boolean isOwnerView = false;
+        try {
+            var auth = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+            if (auth != null && auth.isAuthenticated() && !"anonymousUser".equals(auth.getName())) {
+                User current = userRepository.findByEmail(auth.getName()).orElse(null);
+                isOwnerView = current != null && current.getId().equals(user.getId());
+            }
+        } catch (Exception e) {
+            // Khách chưa đăng nhập: xem công khai
+        }
+
+        Page<Video> videos = isOwnerView
+                ? videoRepository.findByUserIdAndStatus(user.getId(), VideoStatus.READY, pageable)
+                : videoRepository.findByUserIdAndStatusAndIsPublicTrue(user.getId(), VideoStatus.READY, pageable);
         return videos.map(videoMapper::toVideoResponse);
     }
 }

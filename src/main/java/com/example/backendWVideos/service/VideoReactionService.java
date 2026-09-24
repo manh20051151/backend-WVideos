@@ -166,13 +166,13 @@ public class VideoReactionService {
     }
 
     /**
-     * Video công khai đã thích bởi user chỉ định (tab "Video đã thích" trên trang kênh).
-     * Chỉ trả video READY + public để không lộ video riêng tư.
+     * Video đã thích bởi user chỉ định (tab "Video đã thích" trên trang kênh).
+     * Hiện tất cả cho mọi người xem (kể cả video riêng tư), chỉ lọc video READY.
      */
     @Transactional(readOnly = true)
     public Page<VideoResponse> getPublicLikedVideos(String userId, Pageable pageable) {
         return videoReactionRepository
-                .findPublicLikedVideosByUserId(userId, pageable)
+                .findLikedVideosByUserId(userId, pageable)
                 .map(r -> {
                     Video video = r.getVideo();
                     Hibernate.initialize(video.getCategories());

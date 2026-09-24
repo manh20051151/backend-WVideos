@@ -34,6 +34,12 @@ public interface VideoReactionRepository extends JpaRepository<VideoReaction, St
             "AND v.status = 'READY' AND v.isPublic = true ORDER BY r.createdAt DESC")
     Page<VideoReaction> findPublicLikedVideosByUserId(@Param("userId") String userId, Pageable pageable);
 
+    // Video đã thích bởi user, bao gồm cả video riêng tư (chỉ dùng khi người xem là chủ kênh)
+    @Query("SELECT r FROM VideoReaction r JOIN FETCH r.video v WHERE r.user.id = :userId " +
+            "AND r.reactionType = com.example.backendWVideos.enums.VideoReactionType.LIKE " +
+            "AND v.status = 'READY' ORDER BY r.createdAt DESC")
+    Page<VideoReaction> findLikedVideosByUserId(@Param("userId") String userId, Pageable pageable);
+
     // Dọn dẹp bản ghi reaction trùng lặp: giữ lại 1 bản ghi (id nhỏ nhất) cho mỗi cặp (user_id, video_id)
     @Modifying
     @Query(value = "DELETE FROM video_reactions WHERE id NOT IN (" +
