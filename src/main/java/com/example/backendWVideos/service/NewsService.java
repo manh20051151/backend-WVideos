@@ -5,6 +5,7 @@ import com.example.backendWVideos.dto.response.NewsCategoryResponse;
 import com.example.backendWVideos.dto.response.NewsResponse;
 import com.example.backendWVideos.entity.News;
 import com.example.backendWVideos.entity.NewsCategory;
+import com.example.backendWVideos.entity.NewsTranslation;
 import com.example.backendWVideos.entity.User;
 import com.example.backendWVideos.enums.NewsStatus;
 import com.example.backendWVideos.exception.AppException;
@@ -23,6 +24,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.regex.Pattern;
 
 @Service
@@ -35,6 +39,7 @@ public class NewsService {
     private final NewsRepository newsRepository;
     private final NewsCategoryRepository newsCategoryRepository;
     private final UserRepository userRepository;
+    private final NewsTranslationService newsTranslationService;
 
     public Page<NewsResponse> getAllNews(Pageable pageable, String search) {
         Page<News> news = (search != null && !search.trim().isEmpty())
@@ -43,7 +48,18 @@ public class NewsService {
         return news.map(this::mapToResponse);
     }
 
-    public Page<NewsResponse> getPublishedNews(Pageable pageable, String categoryId, String search) {
+    /**
+     * Danh sách tin đã xuất bản (public) - tiêu đề + tóm tắt bản địa hóa
+     * theo Accept-Language (fallback tiếng Việt nếu chưa có bản dịch).
+     */
+    public Page<NewsResponse> getPublishedNews(Pageable pageable, String categoryId, String search,
+                                               Locale locale) {
+        Page<NewsResponse> page = getPublishedNewsOriginal(pageable, categoryId, search);
+        localizeSummaries(page.getContent(), locale);
+        return page;
+    }
+
+    private Page<NewsResponse> getPublishedNewsOriginal(Pageable pageable, String categoryId, String search) {
         NewsStatus status = NewsStatus.PUBLISHED;
         Page<News> news;
         if (search != null && !search.trim().isEmpty()) {
@@ -56,6 +72,33 @@ public class NewsService {
         return news.map(this::mapToResponse);
     }
 
+    /**
+     * Đổi title/summary của danh sách tin sang bản dịch theo locale (nếu có).
+     */
+    private void localizeSummaries(List<NewsResponse> items, Locale locale) {
+        if (items.isEmpty()) {
+            return;
+        }
+        List<String> ids = items.stream().map(NewsResponse::getId).toList();
+        Map<String, NewsTranslation> translations =
+                newsTranslationService.getLocalizedTranslations(ids, locale);
+        if (translations.isEmpty()) {
+            return;
+        }
+        for (NewsResponse item : items) {
+            NewsTranslation t = translations.get(item.getId());
+            if (t == null) {
+                continue;
+            }
+            if (t.getTitle() != null && !t.getTitle().isBlank()) {
+                item.setTitle(t.getTitle());
+            }
+            if (t.getSummary() != null && !t.getSummary().isBlank()) {
+                item.setSummary(t.getSummary());
+            }
+        }
+    }
+
     public NewsResponse getNewsById(String id) {
         News news = newsRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.NEWS_NOT_FOUND));
@@ -63,7 +106,7 @@ public class NewsService {
     }
 
     @Transactional
-    public NewsResponse getPublishedNewsDetail(String idOrSlug) {
+    public NewsResponse getPublishedNewsDetail(String idOrSlug, Locale locale) {
         // Hỗ trợ cả UUID lẫn slug trên URL (link ngoài dùng slug cho đẹp, link cũ theo id vẫn hoạt động)
         News news = newsRepository.findById(idOrSlug)
                 .or(() -> newsRepository.findBySlug(idOrSlug))
@@ -72,7 +115,24 @@ public class NewsService {
             throw new AppException(ErrorCode.NEWS_NOT_FOUND);
         }
         news.setViews(news.getViews() + 1);
-        return mapToResponse(news);
+        NewsResponse response = mapToResponse(news);
+
+        // Bản địa hóa tiêu đề/tóm tắt/nội dung theo Accept-Language (fallback tiếng Việt)
+        Map<String, NewsTranslation> translations = newsTranslationService
+                .getLocalizedTranslations(List.of(news.getId()), locale);
+        NewsTranslation t = translations.get(news.getId());
+        if (t != null) {
+            if (t.getTitle() != null && !t.getTitle().isBlank()) {
+                response.setTitle(t.getTitle());
+            }
+            if (t.getSummary() != null && !t.getSummary().isBlank()) {
+                response.setSummary(t.getSummary());
+            }
+            if (t.getContent() != null && !t.getContent().isBlank()) {
+                response.setContent(t.getContent());
+            }
+        }
+        return response;
     }
 
     @Transactional
@@ -101,6 +161,10 @@ public class NewsService {
 
         News saved = newsRepository.save(news);
         log.info("Đã tạo tin tức: {} bởi {}", saved.getTitle(), author.getEmail());
+
+        // Dịch tự động bài tin sang các ngôn ngữ sau khi commit
+        newsTranslationService.scheduleTranslate(saved.getId());
+
         return mapToResponse(saved);
     }
 
@@ -113,6 +177,11 @@ public class NewsService {
         }
 
         NewsCategory category = resolveCategory(request.getCategoryId());
+
+        // Nội dung gốc thay đổi -> bản dịch cũ đã lỗi thời
+        boolean contentChanged = !strEq(news.getTitle(), request.getTitle())
+                || !strEq(news.getSummary(), request.getSummary())
+                || !strEq(news.getContent(), request.getContent());
 
         news.setTitle(request.getTitle());
         news.setSlug(request.getSlug());
@@ -133,6 +202,12 @@ public class NewsService {
 
         News updated = newsRepository.save(news);
         log.info("Đã cập nhật tin tức: {}", updated.getTitle());
+
+        // Đổi nội dung -> xóa bản dịch cũ, dịch lại sau commit
+        if (contentChanged) {
+            newsTranslationService.scheduleRetranslate(updated.getId());
+        }
+
         return mapToResponse(updated);
     }
 
@@ -141,7 +216,12 @@ public class NewsService {
         News news = newsRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.NEWS_NOT_FOUND));
         newsRepository.delete(news);
+        newsTranslationService.deleteTranslations(id);
         log.info("Đã xóa tin tức: {}", news.getTitle());
+    }
+
+    private boolean strEq(String a, String b) {
+        return a == null ? b == null : a.equals(b);
     }
 
     private NewsCategory resolveCategory(String categoryId) {
