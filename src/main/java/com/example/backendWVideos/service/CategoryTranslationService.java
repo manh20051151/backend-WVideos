@@ -1,8 +1,12 @@
 package com.example.backendWVideos.service;
 
+import com.example.backendWVideos.dto.request.CategoryTranslationUpsertRequest;
+import com.example.backendWVideos.dto.response.CategoryTranslationResponse;
 import com.example.backendWVideos.entity.Category;
 import com.example.backendWVideos.entity.CategoryTranslation;
 import com.example.backendWVideos.entity.NewsCategory;
+import com.example.backendWVideos.exception.AppException;
+import com.example.backendWVideos.exception.ErrorCode;
 import com.example.backendWVideos.repository.CategoryRepository;
 import com.example.backendWVideos.repository.CategoryTranslationRepository;
 import com.example.backendWVideos.repository.NewsCategoryRepository;
@@ -142,7 +146,9 @@ public class CategoryTranslationService {
                 if (entry == null) {
                     continue;
                 }
-                saved += upsertOne(p.ownerType(), p.ownerId(), entry, targets);
+                // Chỉ chèn ngôn ngữ còn thiếu, không ghi đè bản dịch đã có
+                // (bảo vệ bản dịch admin đã sửa tay cho ngôn ngữ khác của cùng danh mục)
+                saved += upsertOne(p.ownerType(), p.ownerId(), entry, targets, false);
             }
             log.info("🌐 [CategoryTranslation] ✅ Backfill xong: {} bản dịch", saved);
         } catch (Exception e) {
@@ -166,6 +172,70 @@ public class CategoryTranslationService {
                 .findByOwnerTypeAndOwnerIdInAndLocale(ownerType, ownerIds, contentLocale)
                 .stream()
                 .collect(Collectors.toMap(CategoryTranslation::getOwnerId, CategoryTranslation::getName));
+    }
+
+    /**
+     * Danh sách bản dịch của 1 danh mục cho trang admin quản lý:
+     * trả đủ mọi ngôn ngữ đích, ngôn ngữ chưa dịch thì name = null.
+     */
+    public List<CategoryTranslationResponse> getTranslationsForAdmin(String ownerType, String ownerId) {
+        List<String> targets = geminiApiClient.getTargetLocales();
+        if (targets.isEmpty()) {
+            return List.of();
+        }
+        Map<String, CategoryTranslation> existing = categoryTranslationRepository
+                .findByOwnerTypeAndOwnerId(ownerType, ownerId).stream()
+                .collect(Collectors.toMap(CategoryTranslation::getLocale, t -> t));
+        return targets.stream()
+                .map(locale -> {
+                    CategoryTranslation t = existing.get(locale);
+                    return CategoryTranslationResponse.builder()
+                            .locale(locale)
+                            .name(t != null ? t.getName() : null)
+                            .updatedAt(t != null ? t.getUpdatedAt() : null)
+                            .build();
+                })
+                .toList();
+    }
+
+    /**
+     * Admin cập nhật bản dịch tên danh mục sau khi Gemini dịch (sửa lại cho tự nhiên,
+     * dịch tay ngôn ngữ còn thiếu, hoặc xóa bản dịch sai - name để trống).
+     */
+    @org.springframework.transaction.annotation.Transactional
+    public List<CategoryTranslationResponse> updateTranslations(
+            String ownerType, String ownerId, List<CategoryTranslationUpsertRequest.Item> items) {
+        List<String> targets = geminiApiClient.getTargetLocales();
+        for (CategoryTranslationUpsertRequest.Item item : items) {
+            if (item.getLocale() == null || targets.stream().noneMatch(t -> t.equalsIgnoreCase(item.getLocale()))) {
+                throw new AppException(ErrorCode.UNSUPPORTED_TRANSLATION_LOCALE);
+            }
+        }
+
+        for (CategoryTranslationUpsertRequest.Item item : items) {
+            String locale = targets.stream()
+                    .filter(t -> t.equalsIgnoreCase(item.getLocale())).findFirst().orElseThrow();
+            String name = item.getName() != null ? item.getName().trim() : "";
+
+            if (name.isEmpty()) {
+                // Name rỗng -> xóa bản dịch, frontend sẽ fallback tên tiếng Việt gốc
+                categoryTranslationRepository
+                        .findFirstByOwnerTypeAndOwnerIdAndLocale(ownerType, ownerId, locale)
+                        .ifPresent(categoryTranslationRepository::delete);
+                continue;
+            }
+
+            CategoryTranslation t = categoryTranslationRepository
+                    .findFirstByOwnerTypeAndOwnerIdAndLocale(ownerType, ownerId, locale)
+                    .orElseGet(() -> CategoryTranslation.builder()
+                            .ownerType(ownerType).ownerId(ownerId).locale(locale).build());
+            t.setName(name);
+            categoryTranslationRepository.save(t);
+        }
+        log.info("🌐 [CategoryTranslation] Admin cập nhật {} bản dịch cho danh mục {} {}",
+                items.size(), ownerType, ownerId);
+
+        return getTranslationsForAdmin(ownerType, ownerId);
     }
 
     /**
@@ -203,6 +273,15 @@ public class CategoryTranslationService {
     }
 
     private int upsertOne(String ownerType, String ownerId, JsonNode translations, List<String> targets) {
+        return upsertOne(ownerType, ownerId, translations, targets, true);
+    }
+
+    /**
+     * @param overwriteExisting false = bỏ qua ngôn ngữ đã có bản dịch (backfill),
+     *                          true = ghi đè (tạo mới / dịch lại sau khi đã xóa sạch).
+     */
+    private int upsertOne(String ownerType, String ownerId, JsonNode translations, List<String> targets,
+                          boolean overwriteExisting) {
         if (translations == null) {
             return 0;
         }
@@ -212,10 +291,14 @@ public class CategoryTranslationService {
             if (value == null || value.asText().isBlank()) {
                 continue;
             }
-            CategoryTranslation t = categoryTranslationRepository
-                    .findFirstByOwnerTypeAndOwnerIdAndLocale(ownerType, ownerId, locale)
-                    .orElseGet(() -> CategoryTranslation.builder()
-                            .ownerType(ownerType).ownerId(ownerId).locale(locale).build());
+            CategoryTranslation existing = categoryTranslationRepository
+                    .findFirstByOwnerTypeAndOwnerIdAndLocale(ownerType, ownerId, locale).orElse(null);
+            if (existing != null && !overwriteExisting) {
+                continue;
+            }
+            CategoryTranslation t = existing != null ? existing
+                    : CategoryTranslation.builder()
+                            .ownerType(ownerType).ownerId(ownerId).locale(locale).build();
             t.setName(value.asText());
             categoryTranslationRepository.save(t);
             saved++;

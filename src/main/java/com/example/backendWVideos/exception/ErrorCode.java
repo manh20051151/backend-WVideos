@@ -143,6 +143,8 @@ public enum ErrorCode {
     REPORT_REASON_CODE_EXISTED(10207, "Mã lý do báo cáo đã tồn tại", HttpStatus.BAD_REQUEST),
     REPORT_REASON_IN_USE(10208, "Lý do này đã được dùng trong báo cáo, không thể xóa - hãy ẩn nó thay vì xóa", HttpStatus.BAD_REQUEST),
     REPORT_REASON_INVALID(10209, "Lý do báo cáo không hợp lệ hoặc đã bị ẩn", HttpStatus.BAD_REQUEST),
+
+    UNSUPPORTED_TRANSLATION_LOCALE(10210, "Ngôn ngữ bản dịch không được hỗ trợ", HttpStatus.BAD_REQUEST),
     ;
 
     ErrorCode(int code, String message, HttpStatusCode statusCode) {

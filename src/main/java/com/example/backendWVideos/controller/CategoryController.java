@@ -1,8 +1,10 @@
 package com.example.backendWVideos.controller;
 
 import com.example.backendWVideos.dto.request.CategoryCreateRequest;
+import com.example.backendWVideos.dto.request.CategoryTranslationUpsertRequest;
 import com.example.backendWVideos.dto.request.CategoryUpdateRequest;
 import com.example.backendWVideos.dto.response.CategoryResponse;
+import com.example.backendWVideos.dto.response.CategoryTranslationResponse;
 import com.example.backendWVideos.service.CategoryService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -61,6 +63,28 @@ public class CategoryController {
     public ResponseEntity<CategoryResponse> getCategoryById(@PathVariable String id) {
         CategoryResponse category = categoryService.getCategoryById(id);
         return ResponseEntity.ok(category);
+    }
+
+    /**
+     * Lấy mọi bản dịch tên của 1 thể loại (admin only).
+     * Trả đủ các ngôn ngữ đích, ngôn ngữ chưa dịch thì name = null.
+     */
+    @GetMapping("/{id}/translations")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<List<CategoryTranslationResponse>> getTranslations(@PathVariable String id) {
+        return ResponseEntity.ok(categoryService.getTranslations(id));
+    }
+
+    /**
+     * Admin cập nhật bản dịch tên thể loại sau khi Gemini dịch tự động
+     * (sửa lại cho tự nhiên, dịch tay ngôn ngữ còn thiếu, name rỗng -> xóa bản dịch).
+     */
+    @PutMapping("/{id}/translations")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<List<CategoryTranslationResponse>> updateTranslations(
+            @PathVariable String id,
+            @Valid @RequestBody CategoryTranslationUpsertRequest request) {
+        return ResponseEntity.ok(categoryService.updateTranslations(id, request.getTranslations()));
     }
     
     /**

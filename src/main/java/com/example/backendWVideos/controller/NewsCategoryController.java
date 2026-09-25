@@ -1,6 +1,8 @@
 package com.example.backendWVideos.controller;
 
+import com.example.backendWVideos.dto.request.CategoryTranslationUpsertRequest;
 import com.example.backendWVideos.dto.request.NewsCategoryRequest;
+import com.example.backendWVideos.dto.response.CategoryTranslationResponse;
 import com.example.backendWVideos.dto.response.NewsCategoryResponse;
 import com.example.backendWVideos.service.NewsCategoryService;
 import jakarta.validation.Valid;
@@ -44,6 +46,28 @@ public class NewsCategoryController {
     @GetMapping("/{id}")
     public ResponseEntity<NewsCategoryResponse> getCategoryById(@PathVariable String id) {
         return ResponseEntity.ok(newsCategoryService.getCategoryById(id));
+    }
+
+    /**
+     * Lấy mọi bản dịch tên của 1 danh mục tin tức (admin only).
+     * Trả đủ các ngôn ngữ đích, ngôn ngữ chưa dịch thì name = null.
+     */
+    @GetMapping("/{id}/translations")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<List<CategoryTranslationResponse>> getTranslations(@PathVariable String id) {
+        return ResponseEntity.ok(newsCategoryService.getTranslations(id));
+    }
+
+    /**
+     * Admin cập nhật bản dịch tên danh mục tin tức sau khi Gemini dịch tự động
+     * (sửa lại cho tự nhiên, dịch tay ngôn ngữ còn thiếu, name rỗng -> xóa bản dịch).
+     */
+    @PutMapping("/{id}/translations")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<List<CategoryTranslationResponse>> updateTranslations(
+            @PathVariable String id,
+            @Valid @RequestBody CategoryTranslationUpsertRequest request) {
+        return ResponseEntity.ok(newsCategoryService.updateTranslations(id, request.getTranslations()));
     }
 
     @PostMapping

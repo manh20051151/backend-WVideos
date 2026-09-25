@@ -1,6 +1,8 @@
 package com.example.backendWVideos.service;
 
+import com.example.backendWVideos.dto.request.CategoryTranslationUpsertRequest;
 import com.example.backendWVideos.dto.request.NewsCategoryRequest;
+import com.example.backendWVideos.dto.response.CategoryTranslationResponse;
 import com.example.backendWVideos.dto.response.NewsCategoryResponse;
 import com.example.backendWVideos.entity.NewsCategory;
 import com.example.backendWVideos.entity.User;
@@ -66,6 +68,30 @@ public class NewsCategoryService {
         NewsCategory category = newsCategoryRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.NEWS_CATEGORY_NOT_FOUND));
         return mapToResponse(category);
+    }
+
+    /**
+     * Lấy mọi bản dịch tên của 1 danh mục tin tức cho admin (ngôn ngữ chưa dịch -> name = null)
+     */
+    public List<CategoryTranslationResponse> getTranslations(String id) {
+        if (!newsCategoryRepository.existsById(id)) {
+            throw new AppException(ErrorCode.NEWS_CATEGORY_NOT_FOUND);
+        }
+        return categoryTranslationService.getTranslationsForAdmin(
+                CategoryTranslationService.OWNER_NEWS, id);
+    }
+
+    /**
+     * Admin cập nhật bản dịch tên danh mục tin tức (name rỗng -> xóa bản dịch ngôn ngữ đó)
+     */
+    @Transactional
+    public List<CategoryTranslationResponse> updateTranslations(
+            String id, List<CategoryTranslationUpsertRequest.Item> items) {
+        if (!newsCategoryRepository.existsById(id)) {
+            throw new AppException(ErrorCode.NEWS_CATEGORY_NOT_FOUND);
+        }
+        return categoryTranslationService.updateTranslations(
+                CategoryTranslationService.OWNER_NEWS, id, items);
     }
 
     @Transactional

@@ -1,8 +1,10 @@
 package com.example.backendWVideos.service;
 
 import com.example.backendWVideos.dto.request.CategoryCreateRequest;
+import com.example.backendWVideos.dto.request.CategoryTranslationUpsertRequest;
 import com.example.backendWVideos.dto.request.CategoryUpdateRequest;
 import com.example.backendWVideos.dto.response.CategoryResponse;
+import com.example.backendWVideos.dto.response.CategoryTranslationResponse;
 import com.example.backendWVideos.entity.Category;
 import com.example.backendWVideos.entity.User;
 import com.example.backendWVideos.exception.AppException;
@@ -80,7 +82,31 @@ public class CategoryService {
                 .orElseThrow(() -> new AppException(ErrorCode.CATEGORY_NOT_FOUND));
         return mapToResponse(category);
     }
-    
+
+    /**
+     * Lấy mọi bản dịch tên của 1 thể loại cho admin (ngôn ngữ chưa dịch -> name = null)
+     */
+    public List<CategoryTranslationResponse> getTranslations(String id) {
+        if (!categoryRepository.existsById(id)) {
+            throw new AppException(ErrorCode.CATEGORY_NOT_FOUND);
+        }
+        return categoryTranslationService.getTranslationsForAdmin(
+                CategoryTranslationService.OWNER_VIDEO, id);
+    }
+
+    /**
+     * Admin cập nhật bản dịch tên thể loại (name rỗng -> xóa bản dịch ngôn ngữ đó)
+     */
+    @Transactional
+    public List<CategoryTranslationResponse> updateTranslations(
+            String id, List<CategoryTranslationUpsertRequest.Item> items) {
+        if (!categoryRepository.existsById(id)) {
+            throw new AppException(ErrorCode.CATEGORY_NOT_FOUND);
+        }
+        return categoryTranslationService.updateTranslations(
+                CategoryTranslationService.OWNER_VIDEO, id, items);
+    }
+
     /**
      * Tạo thể loại mới
      */
