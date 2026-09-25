@@ -32,13 +32,13 @@ jobs:
   # ===== Giai đoạn CI: build =====
   build:
     name: Build & Verify
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout mã nguồn
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Cài Java 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
@@ -60,10 +60,10 @@ jobs:
     name: Docker Build & Push
     needs: build
     if: github.event_name == 'push'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout mã nguồn
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Cài Docker Buildx
         uses: docker/setup-buildx-action@v3
