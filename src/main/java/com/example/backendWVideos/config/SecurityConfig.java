@@ -50,6 +50,8 @@ public class SecurityConfig {
         "/videos/public",  // Public videos list
         "/videos/all",  // All videos list
         "/videos/*",  // Video details (GET only)
+        "/videos/*/translations",  // Bản dịch tự động của video
+        "/videos/locales",  // Danh sách ngôn ngữ hỗ trợ dịch
         "/videos/*/stream-url",  // Stream URL proxy
         "/videos/*/comments",  // Comments
         "/videos/*/related",  // Related videos

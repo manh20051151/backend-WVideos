@@ -25,6 +25,7 @@ public class StreamtapeUploadAsyncService {
     private final VideoRepository videoRepository;
     private final StreamtapeService streamtapeService;
     private final NotificationService notificationService;
+    private final VideoTranslationService videoTranslationService;
 
     // Thư mục lưu file tạm
     private static final String TEMP_DIR = System.getProperty("java.io.tmpdir") + "/snha-uploads/";
@@ -125,6 +126,9 @@ public class StreamtapeUploadAsyncService {
 
             videoRepository.save(video);
             log.info("✅ [Streamtape - New Thread] Hoàn tất upload video {}! Status: {}, thumbnail: {}", videoId, video.getStatus(), video.getThumbnailUrl());
+
+            // Dịch tự động tiêu đề/mô tả sang các ngôn ngữ sau khi upload thành công
+            videoTranslationService.translateVideoAsync(videoId);
 
             // Thông báo realtime cho người đăng ký khi video sẵn sàng (READY)
             if (video.getStatus() == VideoStatus.READY && video.getUser() != null) {

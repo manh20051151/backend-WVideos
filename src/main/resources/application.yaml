@@ -1,7 +1,16 @@
 spring:
   application:
     name: backendWVideos
-  
+
+  # i18n: message lỗi API theo header Accept-Language của client.
+  # File bundle: messages.properties (vi mặc định), messages_en/zh/ja/ko/hi/th/lo/km.properties
+  messages:
+    basename: messages
+    encoding: UTF-8
+    fallback-to-system-locale: false
+  web:
+    locale: vi
+
   # Database Configuration
   datasource:
     url: ${DB_URL:jdbc:mysql://localhost:3306/db_wvideos?createDatabaseIfNotExist=true}
@@ -107,6 +116,15 @@ app:
     api-url: ${SEPAY_API_URL:https://my.sepay.vn/userapi/transactions/list}
     account-number: ${SEPAY_ACCOUNT_NUMBER:0375000169}
     api-token: ${SEPAY_API_TOKEN:HG9DYJZHSEJPPLR5IYKB1DODLN68JAINR2UHAVSZQB70ONYXFEKQT34DNWJSTAW0}
+
+  # Dịch tự động tiêu đề/mô tả video bằng Gemini API (Google AI Studio, free tier).
+  # Lấy key miễn phí tại https://aistudio.google.com/app/apikey rồi set GEMINI_API_KEY trong .env.
+  # Để trống -> tính năng tự tắt, không ảnh hưởng luồng upload.
+  translation:
+    gemini-api-key: ${GEMINI_API_KEY:}
+    gemini-model: ${GEMINI_MODEL:gemini-3.5-flash-lite}
+    # Ngôn ngữ đích (ngôn ngữ gốc là tiếng Việt): en, zh-CN giản thể, ja, ko, hi, th, lo, km
+    target-locales: ${TRANSLATION_TARGET_LOCALES:en,zh-CN,ja,ko,hi,th,lo,km}
 
 # DoodStream Configuration
 doodstream:

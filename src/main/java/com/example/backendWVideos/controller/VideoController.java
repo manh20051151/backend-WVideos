@@ -45,9 +45,34 @@ public class VideoController {
     private final com.example.backendWVideos.service.StreamtapeService streamtapeService;
     private final UserRepository userRepository;
     private final com.example.backendWVideos.service.ChannelAnalyticsService channelAnalyticsService;
+    private final com.example.backendWVideos.service.VideoTranslationService videoTranslationService;
     
     private RestTemplate getRestTemplate() {
         return new RestTemplate();
+    }
+
+    /**
+     * Lấy danh sách bản dịch tự động của video (public) - hỗ trợ cả id và slug.
+     */
+    @Operation(summary = "Get video translations", description = "Bản dịch tự động (Gemini) của tiêu đề + mô tả video")
+    @GetMapping("/{videoId}/translations")
+    public ApiResponse<List<com.example.backendWVideos.dto.response.VideoTranslationResponse>> getVideoTranslations(
+            @PathVariable String videoId
+    ) {
+        return ApiResponse.<List<com.example.backendWVideos.dto.response.VideoTranslationResponse>>builder()
+                .result(videoTranslationService.getTranslations(videoId))
+                .build();
+    }
+
+    /**
+     * Danh sách ngôn ngữ hệ thống hỗ trợ dịch (public) - cho frontend render menu chọn ngôn ngữ.
+     */
+    @Operation(summary = "Get supported locales", description = "Danh sách ngôn ngữ bản dịch video hỗ trợ")
+    @GetMapping("/locales")
+    public ApiResponse<List<String>> getSupportedLocales() {
+        return ApiResponse.<List<String>>builder()
+                .result(videoTranslationService.getSupportedLocales())
+                .build();
     }
 
     @Operation(summary = "Init upload", description = "Khởi tạo upload - tạo video record và lấy upload server")

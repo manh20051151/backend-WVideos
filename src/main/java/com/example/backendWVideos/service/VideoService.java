@@ -78,6 +78,7 @@ public class VideoService {
     private final NotificationService notificationService;
     private final VideoViewLogRepository videoViewLogRepository;
     private final VideoViewLogService videoViewLogService;
+    private final VideoTranslationService videoTranslationService;
 
     @Value("${app.revenue.creator-share-percent:70}")
     private double creatorSharePercent;
@@ -224,6 +225,9 @@ public class VideoService {
 
                 video = videoRepository.save(video);
                 log.info("✅ Complete upload (Streamtape) thành công: {}", videoId);
+
+                // Dịch tự động sau khi upload hoàn tất
+                videoTranslationService.translateVideoAsync(videoId);
             }
         }
 
@@ -311,6 +315,9 @@ public class VideoService {
 
                 video = videoRepository.save(video);
                 log.info("✅ Complete upload by filename (Streamtape) thành công: {}, fileCode: {}", videoId, fileCode);
+
+                // Dịch tự động sau khi upload hoàn tất
+                videoTranslationService.translateVideoAsync(videoId);
             } else {
                 log.warn("⚠️ Không tìm thấy file trên Streamtape với title: {}", searchTitle);
                 // Vẫn trả về video nhưng status vẫn là UPLOADING
@@ -969,6 +976,11 @@ public class VideoService {
 
         video = videoRepository.save(video);
         log.info("✏️ Cập nhật video: {}", videoId);
+
+        // Đổi tiêu đề/mô tả -> bản dịch cũ đã lỗi thời, xóa và dịch lại
+        if (request.getTitle() != null || request.getDescription() != null) {
+            videoTranslationService.scheduleRetranslate(video.getId());
+        }
 
         return videoMapper.toVideoResponse(video);
     }

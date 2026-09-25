@@ -30,6 +30,7 @@ public class VideoUploadAsyncService {
     private final VideoRepository videoRepository;
     private final DoodStreamService doodStreamService;
     private final NotificationService notificationService;
+    private final VideoTranslationService videoTranslationService;
     
     // Thư mục lưu file tạm
     private static final String TEMP_DIR = System.getProperty("java.io.tmpdir") + "/snha-uploads/";
@@ -103,6 +104,9 @@ public class VideoUploadAsyncService {
 
             videoRepository.save(video);
             log.info("✅ [Async - New Thread] Hoàn tất upload video {}! Status: {}", videoId, video.getStatus());
+
+            // Dịch tự động tiêu đề/mô tả sang các ngôn ngữ sau khi upload thành công
+            videoTranslationService.translateVideoAsync(videoId);
 
             // Thông báo realtime cho người đăng ký khi video sẵn sàng (READY)
             if (video.getStatus() == VideoStatus.READY && video.getUser() != null) {
