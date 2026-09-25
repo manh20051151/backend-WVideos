@@ -19,6 +19,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -28,6 +30,7 @@ public class NewsCategoryService {
 
     private final NewsCategoryRepository newsCategoryRepository;
     private final UserRepository userRepository;
+    private final CategoryTranslationService categoryTranslationService;
 
     public Page<NewsCategoryResponse> getAllCategories(Pageable pageable, String search) {
         Page<NewsCategory> categories = (search != null && !search.trim().isEmpty())
@@ -36,9 +39,26 @@ public class NewsCategoryService {
         return categories.map(this::mapToResponse);
     }
 
-    public List<NewsCategoryResponse> getActiveCategories() {
-        return newsCategoryRepository.findAllActiveOrderBySortOrder().stream()
-                .map(this::mapToResponse)
+    /**
+     * Lấy danh mục tin tức đang hoạt động.
+     * Tên được bản địa hóa theo Accept-Language (fallback tiếng Việt nếu chưa có bản dịch).
+     */
+    public List<NewsCategoryResponse> getActiveCategories(Locale locale) {
+        List<NewsCategory> categories = newsCategoryRepository.findAllActiveOrderBySortOrder();
+
+        List<String> ids = categories.stream().map(NewsCategory::getId).toList();
+        Map<String, String> localizedNames = categoryTranslationService
+                .getLocalizedNames(CategoryTranslationService.OWNER_NEWS, ids, locale);
+
+        return categories.stream()
+                .map(c -> {
+                    NewsCategoryResponse response = mapToResponse(c);
+                    String translated = localizedNames.get(c.getId());
+                    if (translated != null && !translated.isBlank()) {
+                        response.setName(translated);
+                    }
+                    return response;
+                })
                 .collect(Collectors.toList());
     }
 
@@ -71,6 +91,11 @@ public class NewsCategoryService {
 
         NewsCategory saved = newsCategoryRepository.save(category);
         log.info("Đã tạo danh mục tin tức: {} bởi admin: {}", saved.getName(), admin.getEmail());
+
+        // Dịch tự động tên danh mục sang các ngôn ngữ sau khi commit
+        categoryTranslationService.scheduleTranslate(
+                CategoryTranslationService.OWNER_NEWS, saved.getId(), saved.getName());
+
         return mapToResponse(saved);
     }
 
@@ -86,6 +111,7 @@ public class NewsCategoryService {
             throw new AppException(ErrorCode.NEWS_CATEGORY_SLUG_EXISTED);
         }
 
+        String oldName = category.getName();
         category.setName(request.getName());
         category.setSlug(request.getSlug());
         category.setDescription(request.getDescription());
@@ -94,6 +120,13 @@ public class NewsCategoryService {
 
         NewsCategory updated = newsCategoryRepository.save(category);
         log.info("Đã cập nhật danh mục tin tức: {}", updated.getName());
+
+        // Đổi tên -> xóa bản dịch cũ, dịch lại sau commit
+        if (oldName != null && !oldName.equals(updated.getName())) {
+            categoryTranslationService.scheduleRetranslate(
+                    CategoryTranslationService.OWNER_NEWS, updated.getId(), updated.getName());
+        }
+
         return mapToResponse(updated);
     }
 
@@ -102,6 +135,7 @@ public class NewsCategoryService {
         NewsCategory category = newsCategoryRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.NEWS_CATEGORY_NOT_FOUND));
         newsCategoryRepository.delete(category);
+        categoryTranslationService.deleteTranslations(CategoryTranslationService.OWNER_NEWS, id);
         log.info("Đã xóa danh mục tin tức: {}", category.getName());
     }
 

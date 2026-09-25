@@ -24,8 +24,8 @@ public class NewsCategoryController {
     private final NewsCategoryService newsCategoryService;
 
     @GetMapping
-    public ResponseEntity<List<NewsCategoryResponse>> getActiveCategories() {
-        return ResponseEntity.ok(newsCategoryService.getActiveCategories());
+    public ResponseEntity<List<NewsCategoryResponse>> getActiveCategories(java.util.Locale locale) {
+        return ResponseEntity.ok(newsCategoryService.getActiveCategories(locale));
     }
 
     @GetMapping("/admin")

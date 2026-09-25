@@ -26,11 +26,12 @@ public class CategoryController {
     private final CategoryService categoryService;
     
     /**
-     * Lấy tất cả thể loại đang hoạt động (public)
+     * Lấy tất cả thể loại đang hoạt động (public).
+     * Tên danh mục bản địa hóa theo header Accept-Language (fallback tiếng Việt).
      */
     @GetMapping
-    public ResponseEntity<List<CategoryResponse>> getActiveCategories() {
-        List<CategoryResponse> categories = categoryService.getActiveCategories();
+    public ResponseEntity<List<CategoryResponse>> getActiveCategories(java.util.Locale locale) {
+        List<CategoryResponse> categories = categoryService.getActiveCategories(locale);
         return ResponseEntity.ok(categories);
     }
     

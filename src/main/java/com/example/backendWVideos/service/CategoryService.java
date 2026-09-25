@@ -19,22 +19,24 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class CategoryService {
-    
+
     private final CategoryRepository categoryRepository;
     private final UserRepository userRepository;
-    
+    private final CategoryTranslationService categoryTranslationService;
+
     /**
      * Lấy tất cả thể loại (cho admin) với phân trang và tìm kiếm
      */
     public Page<CategoryResponse> getAllCategories(Pageable pageable, String search) {
         Page<Category> categories;
-        
+
         if (search != null && !search.trim().isEmpty()) {
             // Tìm kiếm theo tên, slug hoặc người tạo
             categories = categoryRepository.findBySearchQuery(search.trim(), pageable);
@@ -42,17 +44,31 @@ public class CategoryService {
             // Lấy tất cả với fetch createdBy
             categories = categoryRepository.findAllWithCreatedBy(pageable);
         }
-        
+
         return categories.map(this::mapToResponse);
     }
-    
+
     /**
-     * Lấy tất cả thể loại đang hoạt động (cho user)
+     * Lấy tất cả thể loại đang hoạt động (cho user).
+     * Tên được bản địa hóa theo Accept-Language (fallback tiếng Việt nếu chưa có bản dịch).
      */
-    public List<CategoryResponse> getActiveCategories() {
+    public List<CategoryResponse> getActiveCategories(java.util.Locale locale) {
         List<Category> categories = categoryRepository.findAllActiveOrderBySortOrder();
+
+        // Bản dịch tên theo locale của request (map rỗng nếu locale = vi)
+        List<String> ids = categories.stream().map(Category::getId).toList();
+        Map<String, String> localizedNames = categoryTranslationService
+                .getLocalizedNames(CategoryTranslationService.OWNER_VIDEO, ids, locale);
+
         return categories.stream()
-                .map(this::mapToResponse)
+                .map(c -> {
+                    CategoryResponse response = mapToResponse(c);
+                    String translated = localizedNames.get(c.getId());
+                    if (translated != null && !translated.isBlank()) {
+                        response.setName(translated);
+                    }
+                    return response;
+                })
                 .collect(Collectors.toList());
     }
     
@@ -113,7 +129,11 @@ public class CategoryService {
         
         Category savedCategory = categoryRepository.save(category);
         log.info("Đã tạo thể loại mới: {} bởi admin: {}", savedCategory.getName(), admin.getEmail());
-        
+
+        // Dịch tự động tên danh mục sang các ngôn ngữ sau khi commit
+        categoryTranslationService.scheduleTranslate(
+                CategoryTranslationService.OWNER_VIDEO, savedCategory.getId(), savedCategory.getName());
+
         return mapToResponse(savedCategory);
     }
     
@@ -136,6 +156,7 @@ public class CategoryService {
         }
         
         // Cập nhật thông tin
+        String oldName = category.getName();
         category.setName(request.getName());
         category.setSlug(request.getSlug());
         category.setDescription(request.getDescription());
@@ -143,10 +164,16 @@ public class CategoryService {
         category.setIcon(request.getIcon());
         category.setIsActive(request.getIsActive());
         category.setSortOrder(request.getSortOrder());
-        
+
         Category updatedCategory = categoryRepository.save(category);
         log.info("Đã cập nhật thể loại: {}", updatedCategory.getName());
-        
+
+        // Đổi tên -> bản dịch cũ đã lỗi thời, xóa và dịch lại sau commit
+        if (oldName != null && !oldName.equals(updatedCategory.getName())) {
+            categoryTranslationService.scheduleRetranslate(
+                    CategoryTranslationService.OWNER_VIDEO, updatedCategory.getId(), updatedCategory.getName());
+        }
+
         return mapToResponse(updatedCategory);
     }
     
@@ -162,6 +189,7 @@ public class CategoryService {
         // Có thể set category = null cho các video hoặc không cho phép xóa
         
         categoryRepository.delete(category);
+        categoryTranslationService.deleteTranslations(CategoryTranslationService.OWNER_VIDEO, id);
         log.info("Đã xóa thể loại: {}", category.getName());
     }
     
